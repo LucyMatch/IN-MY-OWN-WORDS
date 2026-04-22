@@ -26,7 +26,7 @@ export function EmptyInputBubble({ onStage, disabled }: EmptyInputBubbleProps) {
   }
 
   return (
-    <div className="bg-surface shadow-input mb-3 flex flex-col rounded-xl">
+    <div className="bg-page shadow-input mb-3 flex flex-col rounded-xl">
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}

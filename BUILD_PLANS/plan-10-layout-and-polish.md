@@ -8,7 +8,7 @@ Read `BUILD_PLANS/context.md`, `BUILD_PLANS/STATE.md`, and `BUILD_PLANS/design-p
 
 ## What this plan does
 
-A rolling-up pass that covers layout proportions, lens auto-expand behaviour, the small In Your Own Words fixes from testing, and the outstanding small UX polish items. The spine is done after this; anything that doesn't land here moves to a feature plan.
+A rolling-up pass that covers layout proportions, lens auto-expand behaviour, the small In Your Own Words fixes from testing, outstanding small UX polish, and two carry-over plan-09 fixes (lens response length drift and italic styling). The spine is done after this; anything that doesn't land here moves to a feature plan.
 
 ### In scope
 
@@ -20,13 +20,16 @@ A rolling-up pass that covers layout proportions, lens auto-expand behaviour, th
 6. **Hamburger is a toggle:** clicking the hamburger icon when the nav menu is open closes the menu. Currently only opens.
 7. **Reading pane title/author/section sticky:** the block with section, title, author should stay pinned at the top of the reading pane while the body text scrolls underneath it.
 8. **Sessions pane auto-collapse on interaction:** if the sessions pane is open and the user starts scrolling the reading pane OR creating a highlight OR interacting with a bubble, the pane auto-collapses. Chevron still manually toggles.
+9. **Lens response length — tighten back to 2-3 sentences.** Plan-09 set `maxTokens: 250` but responses are drifting long. Tighten both the prompt and the token cap.
+10. **Drop italics on lens responses.** Keep persona header + right-align + accent border. Italic text is harder to read at length and the other three signals are already strong.
 
 ### Out of scope
 
-- Any API or prompt changes.
 - Changes to the deck (non-prototype slides).
 - Drop the lens-message header (parked as a test-decide item in TEST_LIST — if the framing phrase is consistent enough, header can go in a one-line edit later).
 - Verify button on lens messages (parked per plan-09 decision).
+- Facilitator prompt changes (plan-07's prompt is holding; don't touch).
+- Changes to buddy/consult code (all deleted in plan-09 anyway).
 
 ---
 
@@ -74,23 +77,9 @@ Why `basis-1/2 flex-shrink-0`:
 - `flex-shrink-0` prevents Tailwind/flex from shrinking it when the other columns grow.
 - `flex-1` is dropped — we don't want Reading to grow beyond 50%.
 
-Sessions panel (288px/48px) and IYOW (360px/60px) are fixed-width. Chat is `flex-1` which consumes whatever's left. Lens is 280px/48px. Arithmetic on a 1440px screen with everything expanded:
+Sessions panel (288px/48px) and IYOW (360px/60px) are fixed-width. Chat is `flex-1` which consumes whatever's left. Lens is 280px/48px.
 
-```
-Sessions: 288
-Reading:  720  (50%)
-IYOW:     360
-Chat:     ~88-92 (whatever's left after 288 + 720 + 360 + 280 = 1648; negative means squeeze)
-Lens:     280
-```
-
-Wait — that arithmetic shows Chat will be squeezed below zero at 1440px. This matters. Let me flag honestly: at narrower screens, Chat will be tight or disappear.
-
-**Real-world check:** most modern laptops are 1440px or 1920px wide. At 1440px with everything expanded, the math above shows Chat gets squeezed. At 1920px we have comfortable room (1920 - 1648 = 272px for chat).
-
-**Decision for plan:** keep Reading at 50% and accept that at narrower screens, the user will need to collapse Sessions, Lens, or IYOW to read chat comfortably. This is consistent with how the Chat pane has always worked — it expects to share space. The auto-collapse-on-interaction for Sessions (item 8) and the Lens chevron help here.
-
-**Alternative to consider:** use `basis-1/2` only when there's room, with a `min-w-[480px]` or similar on Chat to protect it. Adding complexity. Skip unless testing shows the squeeze is painful.
+**Known screen-width squeeze at 1440px.** Arithmetic with everything expanded: 288 + 720 + 360 + 280 = 1648px, leaving Chat at negative width. Decision: accept the squeeze. Most real usage happens with Sessions collapsed (auto-collapse on interaction in item 8) and/or Lens collapsed when the reader isn't pulling a lens. At 1920px everything fits. Flag as a TEST_LIST item; don't add a `min-w` guardrail in this plan unless it's painful in practice.
 
 ---
 
@@ -174,50 +163,68 @@ This reverses the order so the empty input sits at the bottom — matching how t
 
 ### Fix 3: Chevron direction
 
-Current in `InYourOwnWordsPane.tsx`:
-- Expanded → shows `ChevronRight` (collapse button).
-- Collapsed → shows `ChevronLeft` (expand button).
+Claude Code's call: flip the two icons, compare visually, keep whichever feels right. Both interpretations (chevron-points-where-pane-will-move vs chevron-points-toward-content) are internally consistent; the ask is that it matches expected behaviour at a glance.
 
-This is BACKWARDS for left-to-right scanning. The convention is:
-- Expanded → chevron points LEFT (showing "I can push this pane to the left / collapse it leftward"... wait, actually this is unclear; let me re-examine).
+Same principle applies to the `LensPane` chevrons — they're the mirror image of IYOW (lens is on the right, collapses rightward). Claude Code should eyeball both panes side-by-side and make sure they tell the user the same story.
 
-Tailwind code currently:
-```tsx
-// Expanded state, collapse button:
-<ChevronRight className="size-4" />   // collapse button — points right, meaning "push this to the right to close"
+---
 
-// Collapsed state, expand button:
-<ChevronLeft className="size-4" />    // expand button — points left, meaning "open back to the left"
+## Lens response length + style (carry-over from plan-09)
+
+### Fix: Tighten lens responses back to 2-3 sentences
+
+Plan-09 set `maxTokens: 250` in `/api/lens` and `BASE_CONSTRAINTS` in `personas.ts` says "2-3 sentences after the framing phrase. Hard cap." But responses are drifting longer in practice. Two levers to pull:
+
+**Lever 1 — lower the token cap.**
+
+In `server/src/routes/lens.ts`:
+```ts
+const result = await callClaude({
+  system,
+  messages: [{ role: 'user', content: userMessage }],
+  maxTokens: 180,   // WAS 250 — enforce 2-3 sentences structurally
+})
 ```
 
-Lucy's ask: "chevron is flipped it points out when its expanded and in when it's collapse it should be reversed."
+180 tokens is roughly 2-3 sentences of moderate length, including the framing phrase. A response that drifts longer gets cut mid-sentence — which in turn trains the prompt (future drafts will observe the truncation and tighten).
 
-"Points out when expanded" = right (it's pointing away from the reader toward the right edge). Lucy wants it pointing IN (toward the reader / toward the content). "In when collapsed it should be reversed" = also wrong direction.
+**Lever 2 — tighten the prompt language.**
 
-Corrected:
-- **Expanded** → chevron points LEFT (`<ChevronLeft />`), meaning "you can collapse me back to the left."
-- **Collapsed** → chevron points RIGHT (`<ChevronRight />`), meaning "open me back out to the right."
+In `server/src/lib/personas.ts`, update `BASE_CONSTRAINTS`:
 
-Swap the two icons in `InYourOwnWordsPane.tsx`:
-
-```tsx
-// Collapsed strip button:
-<ChevronLeft className="size-4" />    // was ChevronLeft — now ChevronRight
-// expanded header collapse button:
-<ChevronRight className="size-4" />   // was ChevronRight — now ChevronLeft
+```ts
+const BASE_CONSTRAINTS = `Output format:
+- Open with a framing phrase: "If I were [your persona name] looking at this, I'd say…" or very close variant. This tells the reader whose lens they're getting.
+- 2-3 sentences TOTAL, including the framing phrase. Hard cap. Never more. Compress aggressively.
+- A real take, not a summary. Expert register, plain English.
+- Owned opinion, clearly yours. Never hedge with "one could argue" — you have a view.
+- Never address the reader as "you."
+- Speak from your lens. Don't try to sound balanced or neutral — the reader came to you for YOUR angle.`
 ```
 
-Double-check by eyeballing the result: the chevron should always point in the direction the pane would MOVE if clicked. Expanded + click → pane moves rightward (collapsing rightward) → chevron points right? Or chevron points "where the content currently is"?
+Key changes:
+- "2-3 sentences TOTAL, including the framing phrase" — previously the framing phrase was implied to be on top of the 2-3 sentences. Tightening so the total is 2-3.
+- "Compress aggressively" — explicit instruction to prefer density over completeness.
 
-**The clearest mental model:** chevrons are arrows. An expanded pane's chevron points in the direction the content will go when collapsed. An expanded IYOW pane collapses BY SHRINKING ITS WIDTH AWAY FROM THE READER — which is rightward from the reader's position (toward the right of the pane). So expanded → right-pointing chevron.
+### Fix: Drop italic styling on lens responses
 
-**But Lucy said it looked flipped.** So either the current implementation is genuinely wrong, OR the mental model is "the chevron points toward the content I want to reveal/see." In which case:
-- Expanded (bubbles visible) → chevron says "I could hide me" → points rightward (away from content).
-- Collapsed (bubbles hidden) → chevron says "show me the bubbles" → points leftward (toward where the content will reappear).
+In `FacilitatorChat.tsx`, the lens-message render currently (from plan-09):
 
-**Claude Code's call:** flip the two icons, compare, keep whichever feels right. Both interpretations are internally consistent; the ask is that it matches expected behaviour. Just swap and verify visually.
+```tsx
+<p className="text-text-primary whitespace-pre-line text-right text-sm italic leading-relaxed">
+  {message.content}
+</p>
+```
 
-Same principle applies to the **`LensPane` chevrons** — they're the mirror image of IYOW (lens is on the right, collapses rightward). Claude Code should eyeball both panes side-by-side and make sure they tell the user the same story.
+Drop the `italic` class:
+
+```tsx
+<p className="text-text-primary whitespace-pre-line text-right text-sm leading-relaxed">
+  {message.content}
+</p>
+```
+
+Keep: persona header, right-align (`text-right` + `items-end` on the wrapper), and left+right accent border on the bubble. Those three signals are enough. Italic text was harder to read at length and redundant with the other cues.
 
 ---
 
@@ -270,10 +277,6 @@ Sessions pane collapses when the user starts actively working. Triggers:
 - User creates a new highlight (mousedown in reading pane counts).
 - User interacts with a bubble (clicks the textarea, etc.).
 
-Simplest implementation: lift `isCollapsed` state from `SessionsPanel` to `PrototypeSlide`, expose a `setSessionsCollapsed` prop or shared setter, and call `setSessionsCollapsed(true)` from the three interaction points.
-
-Actually — cleaner: the three interactions all already happen on components that `PrototypeSlide` owns handlers for. We can:
-
 1. Lift `isSessionsCollapsed` state to `PrototypeSlide`:
    ```tsx
    const [isSessionsCollapsed, setIsSessionsCollapsed] = useState(false)
@@ -298,21 +301,11 @@ Actually — cleaner: the three interactions all already happen on components th
    ```
 
 5. Wire into the three interactions:
-   - **Reading pane scroll** — pass `onScroll={autoCollapseSessions}` to the ReadingPane, or add it there internally (probably cleaner to add `onUserEngage` prop).
+   - **Reading pane scroll** — pass `onScroll={autoCollapseSessions}` to the ReadingPane.
    - **Highlight creation** — call `autoCollapseSessions()` inside `addHighlight`.
    - **Bubble interaction** — call `autoCollapseSessions()` inside `addBubble` and `updateBubble`.
 
-Alternative simpler approach: pass a single `onUserEngage` prop to ReadingPane, IYOW, and fire it from there. But the helper-at-PrototypeSlide-level is fine — we're already holding all the handlers.
-
-**Debounce consideration:** the scroll handler could fire dozens of times per scroll. We only need to fire once (to collapse). Wrap in a one-shot ref pattern:
-
-```tsx
-function handleReadingPaneScroll() {
-  autoCollapseSessions()   // idempotent — only flips state if currently expanded
-}
-```
-
-The `prev ? prev : true` inside `autoCollapseSessions` is idempotent — setting to `true` when already `true` doesn't trigger a re-render in React. No debounce needed.
+**Debounce consideration:** the scroll handler could fire dozens of times per scroll. The `prev ? prev : true` inside `autoCollapseSessions` is idempotent — setting to `true` when already `true` doesn't trigger a re-render in React. No debounce needed.
 
 ---
 
@@ -325,10 +318,13 @@ client/src/components/prototype/InYourOwnWordsPane.tsx   ← Swap empty input bu
 client/src/components/prototype/EmptyInputBubble.tsx     ← bg-page on outer wrapper
 client/src/components/prototype/SessionsPanel.tsx        ← Accept isCollapsed + onToggleCollapsed as props instead of internal state
 client/src/components/prototype/LensPane.tsx             ← Verify chevron direction matches IYOW's (symmetry check); no behaviour change beyond that
+client/src/components/prototype/FacilitatorChat.tsx      ← Drop `italic` class on lens-message <p>
 client/src/components/deck/Toolbar.tsx (or wherever the hamburger lives)  ← Toggle behaviour for the menu open/close
+server/src/routes/lens.ts                                 ← maxTokens: 180 (was 250)
+server/src/lib/personas.ts                                ← BASE_CONSTRAINTS tightened: "2-3 sentences TOTAL, including the framing phrase", "Compress aggressively"
 ```
 
-No new files. No server changes. No type changes.
+No new files. No type changes.
 
 ---
 
@@ -343,6 +339,9 @@ No new files. No server changes. No type changes.
 - **Sticky title:** text must scroll cleanly under it, no peek-through.
 - **Sessions auto-collapse is one-way:** user interaction → collapse. Does NOT auto-expand. User must chevron to reopen.
 - **Screen width squeeze:** if chat feels too narrow at 1440px, flag in TEST_LIST — don't attempt to fix in this plan.
+- **Lens response length:** 2-3 sentences TOTAL. Framing phrase counts as part of that total, not bonus.
+- **No italic on lens messages.** Keep header, right-align, accent border — those three carry the demarcation.
+- **Don't touch the facilitator prompt** — plan-07's prompt is holding; changing it risks re-introducing the validation-machine failure.
 - **Match `BUILD_PLANS/design-patterns.md`.**
 - **Don't start the dev server.** Lucy verifies visually.
 
@@ -357,6 +356,7 @@ No new files. No server changes. No type changes.
 - Middle-pane auto-collapse on interaction (no; IYOW is the work surface, shouldn't auto-hide).
 - Reading pane internal anchors or bookmarks (future feature).
 - Highlight-level "jump to" from committed highlights summary (future feature).
+- Facilitator prompt changes.
 
 ---
 
@@ -378,6 +378,11 @@ No new files. No server changes. No type changes.
   - Empty input bubble clearly visible against the surface (warm cream colour, different from pane chrome).
   - Empty input bubble renders at the BOTTOM of the bubble list.
   - Chevron direction feels correct — Lucy can tell at a glance what will happen when clicked. Both IYOW and Lens panes use consistent direction logic.
+- **Lens response length + style:**
+  - `server/src/routes/lens.ts` uses `maxTokens: 180`.
+  - `server/src/lib/personas.ts` `BASE_CONSTRAINTS` says "2-3 sentences TOTAL, including the framing phrase" and "Compress aggressively."
+  - Manual test: click a lens, count sentences. 2-3 total. If drifting longer, tighten prompt further in a feature-plan pass.
+  - Lens messages in the chat render WITHOUT italics. Header + right-align + left/right accent border remain.
 - **Hamburger toggles** the nav menu open/closed.
 - **Reading pane title/author/section** stays pinned at the top while the body scrolls underneath, with no visual artefacts.
 - **Sessions pane auto-collapses** when the user:
@@ -392,5 +397,6 @@ No new files. No server changes. No type changes.
   - ADD: "Lens header vs framing phrase" — with the layout fixed and testing underway, decide whether the lens-message header is redundant with the model's framing phrase. If yes, drop header in a one-line `LensBubble` edit.
   - ADD: "Sessions auto-collapse feel" — does the auto-collapse feel assistive or disruptive? Is the re-expand via chevron discoverable enough?
   - ADD: "Sticky title visual artefacts" — on slow-scroll, does text peek above the sticky header? If so, adjust the -mt-10 pt-10 extension.
-  - REMOVE (or mark resolved): any items previously flagged for chevron direction, empty input position, empty input colour.
-- Summary includes: whether the width math was painful at realistic screen sizes (if Chat felt squeezed, flag it), whether the chevron direction swap felt right (or if it needed flipping again), whether any auto-collapse behaviour felt too aggressive, and whether the sticky reading-pane title landed cleanly.
+  - ADD: "Lens response length after tightening" — did the 180-token cap + tightened prompt hold? If responses still drift long, escalate: add truncation markers or tighten further.
+  - REMOVE (or mark resolved): any items previously flagged for chevron direction, empty input position, empty input colour, lens response length, italic lens styling.
+- Summary includes: whether the width math was painful at realistic screen sizes (if Chat felt squeezed, flag it), whether the chevron direction swap felt right (or if it needed flipping again), whether any auto-collapse behaviour felt too aggressive, whether the sticky reading-pane title landed cleanly, and whether lens responses came out tighter after the prompt + token changes.

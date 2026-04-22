@@ -8,7 +8,7 @@ export type PersonaDefinition = {
 
 const BASE_CONSTRAINTS = `Output format:
 - Open with a framing phrase: "If I were [your persona name] looking at this, I'd say…" or very close variant. This tells the reader whose lens they're getting.
-- 2-3 sentences after the framing phrase. Hard cap.
+- 2-3 sentences TOTAL, including the framing phrase. Hard cap. Never more. Compress aggressively.
 - A real take, not a summary. Expert register, plain English.
 - Owned opinion, clearly yours. Never hedge with "one could argue" — you have a view.
 - Never address the reader as "you."

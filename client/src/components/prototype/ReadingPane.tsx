@@ -18,6 +18,8 @@ type ReadingPaneProps = {
   onAddHighlight: (h: Highlight) => void
   onDeleteHighlight: (id: string) => void
   onSetActiveHighlight: (id: string | null) => void
+  onScroll?: () => void
+  isLensExpanded: boolean
 }
 
 export function ReadingPane({
@@ -29,6 +31,8 @@ export function ReadingPane({
   onAddHighlight,
   onDeleteHighlight,
   onSetActiveHighlight,
+  onScroll,
+  isLensExpanded,
 }: ReadingPaneProps) {
   const blocks = splitIntoParagraphs(text)
   const paragraphsRootRef = useRef<HTMLDivElement>(null)
@@ -69,14 +73,20 @@ export function ReadingPane({
   }
 
   return (
-    <div className={cn('flex-1 overflow-y-auto')}>
+    <div
+      className={cn(
+        'flex-shrink-0 overflow-y-auto transition-[flex-basis] duration-300',
+        isLensExpanded ? 'basis-[35%]' : 'basis-[45%]',
+      )}
+      onScroll={onScroll}
+    >
       <div className="mx-auto max-w-2xl px-10 py-10">
         {session && (
-          <div className="mb-6">
+          <div className="sticky top-0 z-10 bg-page -mt-10 pt-10 pb-6">
             <p className="text-text-tertiary text-xs uppercase tracking-widest">{session.section}</p>
             <h1 className="font-serif text-text-primary mt-1 text-2xl">{session.title}</h1>
             <p className="text-text-secondary mt-1 text-sm">{session.author}</p>
-            <div className="border-border-subtle mb-6 mt-4 border-b" />
+            <div className="border-border-subtle mt-4 border-b" />
           </div>
         )}
 

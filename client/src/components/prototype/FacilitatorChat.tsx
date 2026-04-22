@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -65,7 +65,7 @@ export function FacilitatorChat({ messages, loading, onSend, hasActiveHighlight 
         {loading && <TypingIndicator />}
       </div>
 
-      <div className="border-border-subtle border-t p-3">
+      <div className="border-border-subtle border-t px-3 pt-3 pb-[50px]">
         <ChatInput onSend={onSend} disabled={loading} />
       </div>
     </div>
@@ -84,7 +84,7 @@ function LensBubble({ message }: { message: ChatMessage }) {
           'max-w-[85%]',
         )}
       >
-        <p className="text-text-primary whitespace-pre-line text-right text-sm italic leading-relaxed">
+        <p className="text-text-primary whitespace-pre-line text-right text-sm leading-relaxed">
           {message.content}
         </p>
       </div>
@@ -113,7 +113,15 @@ function ChatBubble({ message }: { message: ChatMessage }) {
 
 function ChatInput({ onSend, disabled }: { onSend: (text: string) => void; disabled: boolean }) {
   const [value, setValue] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const canSend = value.trim().length > 0 && !disabled
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }, [value])
 
   function handleSend() {
     if (!canSend) return
@@ -131,6 +139,7 @@ function ChatInput({ onSend, disabled }: { onSend: (text: string) => void; disab
   return (
     <div className="bg-surface shadow-input flex items-end rounded-xl">
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}

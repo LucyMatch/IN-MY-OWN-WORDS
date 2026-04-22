@@ -6,7 +6,7 @@ What's built, what's working. Updated at the end of every build session.
 
 ---
 
-**Last updated:** 2026-04-21 (plan-09 complete)
+**Last updated:** 2026-04-21 (plan-10 complete)
 
 ---
 
@@ -66,6 +66,19 @@ What's built, what's working. Updated at the end of every build session.
 - `server/src/routes/consult.ts` — accepts `bubbles[]`, passes to `buildBuddyUserMessage`. Server generates `id`/`createdAt` for each `BuddyResponse`. Existing parallel fan-out logic unchanged.
 - `PrototypeSlide` — `consultingHighlights: Set<string>` state; `sendConsult` (staggered 250ms per card); `reRunBuddy` (re-fires all, takes matching buddy); `verifyBuddyResponse` (marks `verifying: true`, appends `verification`). `addBubble` fires consult on first bubble only (guard: `bubbles.length === 0 && buddyResponses.length === 0`).
 - `BuddyPanel` — full rewrite: `EmptyState`, `NotYetState`, `LoadingSkeleton` (inline + full-height), `BuddyCard` (name, response, Verify link, re-run RefreshCw icon, verification block). Disabled "Add a buddy" placeholder button. `isConsulting` drives skeleton visibility.
+
+### Layout and polish (plan-10)
+- `ReadingPane.tsx` — outer wrapper changed from `flex-1` to `basis-[40%] flex-shrink-0`; Reading pane is 40% of available flex width, shrink-locked. (Was `basis-1/2` in the initial plan-10 build; adjusted post-testing — 50% squeezed Chat to unusable width at 1440px.) Title/author/section block is `sticky top-0 z-10 bg-page` with `-mt-10 pt-10` to cancel parent padding and prevent peek-through.
+- `PrototypeSlide.tsx` — Chat wrapper changed from `min-w-0` to `min-w-[300px]`; Chat has a 300px floor. When all panes are expanded and screen real estate runs out, the layout horizontally overflows rather than squeezing Chat — correct failure mode for a reading tool.
+- `PrototypeSlide.tsx` — `lensPaneExpanded` default changed from `true` to `false`; `useEffect` auto-expands lens whenever `activeHighlightId` changes from null to a value or from one highlight to another; `isSessionsCollapsed` state lifted from SessionsPanel; `autoCollapseSessions()` helper wired into `addHighlight`, `addBubble`, `updateBubble`, and ReadingPane `onScroll`; `onScroll={autoCollapseSessions}` passed to ReadingPane; `isCollapsed`/`onToggleCollapsed` passed to SessionsPanel.
+- `SessionsPanel.tsx` — internal `isCollapsed` state removed; now accepts `isCollapsed: boolean` and `onToggleCollapsed: () => void` as props. Chevrons unchanged (left pane: ChevronLeft to collapse, ChevronRight to expand — already correct).
+- `ReadingPane.tsx` — `onScroll?: () => void` prop added, wired to outer scroll container div.
+- `InYourOwnWordsPane.tsx` — empty input bubble moved to bottom of bubble list (was top); chevrons flipped: collapsed strip now shows ChevronRight (expand = grow rightward), expanded header now shows ChevronLeft (collapse = shrink leftward), matching Sessions pane convention.
+- `EmptyInputBubble.tsx` — outer wrapper changed from `bg-surface` to `bg-page` (warm cream, contrasts against pane's `bg-surface` chrome).
+- `FacilitatorChat.tsx` — `italic` class dropped from lens-bubble `<p>`; persona header + right-align + left/right accent border remain as the three demarcation signals.
+- `Toolbar.tsx` — hamburger button now toggles nav menu open/closed; `isNavMenuOpen` added to `useDeck()` destructure; `aria-label` updates dynamically.
+- `server/src/routes/lens.ts` — `maxTokens` lowered from 250 to 180.
+- `server/src/lib/personas.ts` — `BASE_CONSTRAINTS` tightened: "2-3 sentences TOTAL, including the framing phrase. Hard cap. Never more. Compress aggressively."
 
 ### Lenses in chat (plan-09)
 - `shared/types.ts` — `BuddyResponse`, `BuddyMeta`, `ConsultRequest/Response`, `BuddiesResponse`, `Highlight.buddyResponses` removed; `Persona`, `LensRequest/Response`, `PersonasResponse` added; `ChatMessage.kind` extended with `'lens'`; `personaId`/`personaName` fields added to `ChatMessage`
@@ -150,6 +163,14 @@ What's built, what's working. Updated at the end of every build session.
 **Plan 08** ✓ — `plan-08-highlight-scoped-chats.md` — done. Chat moved from session-scoped top-level state to per-highlight `chatHistory` field. Every write targets the captured `highlightId`, not `activeHighlightId` — mid-call highlight switch handled. Chat persists via existing save effect. `FacilitatorChat` shows empty state with input hidden when no highlight active. Committed highlights keep chat open.
 
 **Plan 09** ✓ — `plan-09-lenses-in-chat.md` — done. Buddy panel replaced with Lens pane. Three personas (English Teacher, Historian, Reframer) are now on-demand buttons in a vertical far-right pane. Lens responses land in the highlight's chat thread as `kind:'lens'` messages — italic, right-aligned, left/right accent border, persona header above. Chat pane is now full-height (`flex-1`). Old buddy saves with `buddyResponses` hydrate cleanly (field stripped on load). `plan-08-alt-lenses-in-chat.md` archived.
+
+**Plan 10** ✓ — `plan-10-layout-and-polish.md` — done. Reading pane locked to 40% (`basis-[40%] flex-shrink-0`, adjusted from initial 50% post-testing). Lens auto-expands on highlight activation. IYOW empty input moved to bottom, `bg-page`, chevrons flipped. Sessions pane auto-collapses on highlight creation, bubble staging, scroll. Reading pane title sticky. Hamburger toggles. Lens responses drop italic. Lens token cap 180, prompt tightened to 2-3 sentences TOTAL. Typechecks clean.
+
+**Post-plan-10 adjustments** (no plan file — captured here):
+- `InYourOwnWordsPane.tsx` — all three commit footer states use `pb-[50px]` (was `py-3`) so the commit button sits 50px above pane bottom.
+- `FacilitatorChat.tsx` — chat input wrapper uses `px-3 pt-3 pb-[50px]` (was `p-3`); `ChatInput` textarea auto-grows on keystroke via `useLayoutEffect` + ref, capped at 160px (≈6 lines); shrinks cleanly on delete.
+- `ReadingPane.tsx` — accepts `isLensExpanded: boolean` prop; switches between `basis-[35%]` (lens open) and `basis-[45%]` (lens closed) with a `transition-[flex-basis] duration-300` smooth transition.
+- `PrototypeSlide.tsx` — Sessions/Lens mutual exclusion: opening Lens collapses Sessions; opening Sessions collapses Lens. Applies to both manual chevron toggles AND the auto-expand effect on `activeHighlightId` change. `isLensExpanded={lensPaneExpanded}` passed to ReadingPane.
 
 After plan-06 the main build track is complete. Post-MVP work lives in feature plans (see BUILD_PLANS/feature-*.md):
 - `feature-01-resize-aware-delete-button.md` — × button tracks highlight on viewport resize

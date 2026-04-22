@@ -9,7 +9,7 @@ export function DeckLayout() {
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-page">
       <Toolbar />
-      <main className="flex-1 overflow-hidden relative">
+      <main className="flex-1 overflow-hidden relative pb-4">
         <ActiveSlide />
       </main>
       <SlideNavMenu />

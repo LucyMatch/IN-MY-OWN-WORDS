@@ -32,7 +32,8 @@ export function PrototypeSlide() {
   const [facilitatorLoading, setFacilitatorLoading] = useState(false)
   const [personas, setPersonas] = useState<Persona[]>([])
   const [invokingPersonaId, setInvokingPersonaId] = useState<string | null>(null)
-  const [lensPaneExpanded, setLensPaneExpanded] = useState(true)
+  const [lensPaneExpanded, setLensPaneExpanded] = useState(false)
+  const [isSessionsCollapsed, setIsSessionsCollapsed] = useState(false)
 
   // hasHydratedRef: false until initial load completes.
   // skipNextSaveRef: set true just before setHighlights(loaded) so the save-effect
@@ -101,10 +102,22 @@ export function PrototypeSlide() {
       .catch((err) => console.error('[personas] load error', err))
   }, [])
 
+  useEffect(() => {
+    if (activeHighlightId !== null) {
+      setLensPaneExpanded(true)
+      setIsSessionsCollapsed(true)
+    }
+  }, [activeHighlightId])
+
+  function autoCollapseSessions() {
+    setIsSessionsCollapsed(true)
+  }
+
   function addHighlight(h: Highlight) {
     const withChat: Highlight = { ...h, chatHistory: h.chatHistory ?? [] }
     setHighlights((prev) => [...prev, withChat])
     setActiveHighlightId(withChat.id)
+    autoCollapseSessions()
   }
 
   function deleteHighlight(id: string) {
@@ -404,6 +417,7 @@ export function PrototypeSlide() {
       }),
     )
 
+    autoCollapseSessions()
     void sendSynthesisTurn(highlightId, newBubbleId, highlightText, updatedBubbles)
   }
 
@@ -423,6 +437,7 @@ export function PrototypeSlide() {
       ),
     )
 
+    autoCollapseSessions()
     void sendSynthesisTurn(highlightId, bubbleId, currentHighlight.text, updatedBubbles)
   }
 
@@ -484,6 +499,14 @@ export function PrototypeSlide() {
         loading={loadingSessions}
         error={error}
         highlightCountsBySession={highlightCountsBySession}
+        isCollapsed={isSessionsCollapsed}
+        onToggleCollapsed={() => {
+          setIsSessionsCollapsed((v) => {
+            const next = !v
+            if (!next) setLensPaneExpanded(false)  // opening sessions → close lens
+            return next
+          })
+        }}
       />
       <ReadingPane
         session={activeSession}
@@ -494,6 +517,8 @@ export function PrototypeSlide() {
         onAddHighlight={addHighlight}
         onDeleteHighlight={deleteHighlight}
         onSetActiveHighlight={setActiveHighlightId}
+        onScroll={autoCollapseSessions}
+        isLensExpanded={lensPaneExpanded}
       />
       <InYourOwnWordsPane
         highlights={currentSessionHighlights}
@@ -506,7 +531,7 @@ export function PrototypeSlide() {
         facilitatorLoading={facilitatorLoading}
         onCommit={commitHighlight}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-[300px] flex-1 flex-col">
         <FacilitatorChat
           messages={activeChatHistory}
           loading={facilitatorLoading}
@@ -520,7 +545,13 @@ export function PrototypeSlide() {
         onInvokeLens={invokeLens}
         invokingPersonaId={invokingPersonaId}
         expanded={lensPaneExpanded}
-        onToggleExpanded={() => setLensPaneExpanded((v) => !v)}
+        onToggleExpanded={() => {
+          setLensPaneExpanded((v) => {
+            const next = !v
+            if (next) setIsSessionsCollapsed(true)  // opening lens → close sessions
+            return next
+          })
+        }}
       />
     </div>
   )

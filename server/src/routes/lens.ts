@@ -43,7 +43,7 @@ Section: ${session.section}`
   const result = await callClaude({
     system,
     messages: [{ role: 'user', content: userMessage }],
-    maxTokens: 250,
+    maxTokens: 180,
   })
 
   if (result.kind === 'no-key') return res.status(501).json({ error: result.message })

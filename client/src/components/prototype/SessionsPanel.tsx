@@ -12,6 +12,8 @@ type SessionsPanelProps = {
   loading: boolean
   error: string | null
   highlightCountsBySession: Record<string, number>
+  isCollapsed: boolean
+  onToggleCollapsed: () => void
 }
 
 export function SessionsPanel({
@@ -22,8 +24,9 @@ export function SessionsPanel({
   loading,
   error,
   highlightCountsBySession,
+  isCollapsed,
+  onToggleCollapsed,
 }: SessionsPanelProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [pendingClearId, setPendingClearId] = useState<string | null>(null)
 
   function handleClearClick(sessionId: string) {
@@ -48,7 +51,7 @@ export function SessionsPanel({
     >
       {/* Collapsed affordance — only visible when collapsed */}
       <div className="hidden group-data-[collapsed]/sessions:flex flex-col items-center pt-3">
-        <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)}>
+        <Button variant="ghost" size="icon" onClick={onToggleCollapsed}>
           <ChevronRight className="size-4" />
         </Button>
       </div>
@@ -56,7 +59,7 @@ export function SessionsPanel({
       {/* Expanded affordance — hidden when collapsed */}
       <div className="flex flex-col group-data-[collapsed]/sessions:hidden">
         <div className="flex justify-end px-2 pt-2">
-          <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(true)}>
+          <Button variant="ghost" size="icon" onClick={onToggleCollapsed}>
             <ChevronLeft className="size-4" />
           </Button>
         </div>

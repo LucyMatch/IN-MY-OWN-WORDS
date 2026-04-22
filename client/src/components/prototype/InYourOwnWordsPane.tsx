@@ -59,7 +59,7 @@ export function InYourOwnWordsPane({
           onClick={() => setIsManuallyCollapsed(false)}
           aria-label="Expand In Your Own Words pane"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronRight className="size-4" />
         </Button>
       </div>
 
@@ -74,7 +74,7 @@ export function InYourOwnWordsPane({
             onClick={() => setIsManuallyCollapsed(true)}
             aria-label="Collapse pane"
           >
-            <ChevronRight className="size-4" />
+            <ChevronLeft className="size-4" />
           </Button>
         </div>
 
@@ -82,12 +82,6 @@ export function InYourOwnWordsPane({
         <div className="scroll-area flex-1 overflow-y-auto px-4 py-4">
           {activeHighlight ? (
             <>
-              {!isCommitted && (
-                <EmptyInputBubble
-                  onStage={(text) => onAddBubble(activeHighlight.id, text)}
-                  disabled={facilitatorLoading}
-                />
-              )}
               {activeHighlight.bubbles.map((b) => (
                 <StagedBubble
                   key={b.id}
@@ -97,6 +91,12 @@ export function InYourOwnWordsPane({
                   disabled={facilitatorLoading}
                 />
               ))}
+              {!isCommitted && (
+                <EmptyInputBubble
+                  onStage={(text) => onAddBubble(activeHighlight.id, text)}
+                  disabled={facilitatorLoading}
+                />
+              )}
             </>
           ) : (
             <div className="text-text-tertiary flex h-full flex-col items-center justify-center px-6 text-center text-sm">
@@ -107,14 +107,14 @@ export function InYourOwnWordsPane({
 
         {/* Commit footer */}
         {isCommitted ? (
-          <div className="border-border-subtle flex items-center justify-center border-t px-4 py-3">
+          <div className="border-border-subtle flex items-center justify-center border-t px-4 pt-3 pb-[50px]">
             <div className="text-commit flex items-center gap-2 text-sm">
               <Check className="size-4" />
               <span>Committed</span>
             </div>
           </div>
         ) : activeHighlight ? (
-          <div className="border-border-subtle flex flex-col items-stretch border-t px-4 py-3">
+          <div className="border-border-subtle flex flex-col items-stretch border-t px-4 pt-3 pb-[50px]">
             <Button
               variant="primary"
               disabled={!commitReady || facilitatorLoading || activeHighlight.bubbles.length === 0}
@@ -136,7 +136,7 @@ export function InYourOwnWordsPane({
             )}
           </div>
         ) : (
-          <div className="border-border-subtle border-t px-4 py-3">
+          <div className="border-border-subtle border-t px-4 pt-3 pb-[50px]">
             <Button
               variant="primary"
               disabled

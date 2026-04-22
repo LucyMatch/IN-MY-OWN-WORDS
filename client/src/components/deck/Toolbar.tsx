@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { useDeck } from '@/context/DeckContext'
 
 export function Toolbar() {
-  const { activeIndex, slides, goTo, goNext, goPrev, goToPrototype, setNavMenuOpen } = useDeck()
+  const { activeIndex, slides, goTo, goNext, goPrev, goToPrototype, isNavMenuOpen, setNavMenuOpen } = useDeck()
 
   const currentSlide = slides[activeIndex]
   const isFirst = activeIndex === 0
@@ -70,8 +70,8 @@ export function Toolbar() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setNavMenuOpen(true)}
-          aria-label="Open slide menu"
+          onClick={() => setNavMenuOpen(!isNavMenuOpen)}
+          aria-label={isNavMenuOpen ? 'Close slide menu' : 'Open slide menu'}
         >
           <Menu className="size-4" />
         </Button>

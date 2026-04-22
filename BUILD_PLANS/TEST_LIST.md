@@ -145,22 +145,68 @@ Updated as plans complete.
 
 ---
 
+## Layout and polish (plan-10)
+
+### Horizontal overflow at narrow screens
+**What to test:** Sessions and Lens are now mutually exclusive, and Reading adapts (35% lens-open / 45% lens-closed), so "everything expanded" is impossible. Verify the typical layout fits at 1440px: Sessions collapsed (48px) + Reading 35% (504px) + IYOW 360px + Chat + Lens 280px = 1192px fixed, leaving Chat ~248px — tight but functional. With Lens also collapsed: Reading 45% (648px) + Sessions 48px + IYOW 360px + Chat = 1056px, Chat gets ~384px — comfortable.
+**Why:** The adaptive width + mutual exclusion combination replaces the earlier "overflow as escape valve" approach. The `min-w-[300px]` guardrail on Chat is still there as a hard floor.
+**If Chat still feels squeezed:** Narrow Lens from 280px to 240px in `LensPane.tsx`. One-line change to `w-[280px]`.
+
+### Lens header vs framing phrase
+**What to test:** Invoke a lens. The response now has: (a) persona header above ("The Historian — a different lens") and (b) the model's own framing phrase inside the text. Do both feel necessary, or is one redundant?
+**Why:** With italics gone, the header does more load-bearing work as a visual anchor. But if the model's framing phrase is consistent, the header may be redundant noise.
+**If the header feels redundant:** Remove `{message.personaName} — a different lens` from `LensBubble` in `FacilitatorChat.tsx`. One-line edit.
+
+### Sessions auto-collapse feel
+**What to test:** Open the prototype with Sessions expanded. Start reading (scroll), then create a highlight. Does the Sessions pane collapse smoothly and feel assistive — or does it feel like something disappeared unexpectedly?
+**Why:** The auto-collapse triggers on the first meaningful interaction. If the pane vanishes before the user has oriented, it could feel jarring. The re-expand path (chevron in the 48px strip) needs to be discoverable enough.
+**If it feels too aggressive:** Consider adding a short delay (e.g. 500ms debounce) before collapsing, or only trigger on highlight creation (not on scroll). Edit `autoCollapseSessions` in `PrototypeSlide.tsx`.
+**If re-expand is not discoverable:** Add a tooltip to the collapsed strip chevron, or widen the strip.
+
+### Sessions/Lens mutual exclusion feel
+**What to test:** Open Sessions (chevron in the collapsed strip). Lens should snap shut. Then open Lens (chevron). Sessions should snap shut. Also test: create a highlight — Lens opens AND Sessions collapses simultaneously. Does the mutual exclusion feel like a considered layout decision, or does a panel closing unexpectedly feel like a glitch?
+**Why:** The mutual exclusion is designed to prevent the layout from squeezing Chat between two expanded side panels. But it's implicit — there's no tooltip or label explaining why the other pane closed.
+**If it feels jarring:** Consider a very short CSS transition on the closing pane (it already has `transition-[width] duration-200`) — the collapse is animated, which should soften it. If still confusing, add a tooltip to each pane's chevron button explaining the relationship.
+
+### Chat input auto-grow
+**What to test:** Type a short message (one line) — textarea stays one row. Keep typing past the line wrap — textarea expands. Continue until it hits approximately 6 lines (~160px) — textarea stops growing and gets its own internal scroll. Delete back to one line — textarea shrinks back down. Shift+Enter still inserts a newline without sending.
+**Why:** `useLayoutEffect` resets height to `auto` then sets it to `Math.min(scrollHeight, 160)` on every value change. The reset-then-set pattern is what makes shrinking work — without it, height only grows.
+**If the grow/shrink feels jumpy:** The `useLayoutEffect` fires synchronously before paint, so it should be imperceptible. If there's a flash, check whether something is double-rendering the component.
+
+### 50px bottom breathing room
+**What to test:** Check the commit button (in IYOW) and the chat input (in FacilitatorChat) both sit noticeably above the bottom of their panes rather than flush with the edge. Does 50px feel like comfortable breathing room, or too much empty space below the controls?
+**Why:** `pb-[50px]` on the footer containers. The `pb-4` on `DeckLayout`'s `<main>` adds another 16px of clearance from the screen bottom.
+**If 50px feels excessive:** Dial back to `pb-8` (32px) or `pb-6` (24px) — one-line change each in `InYourOwnWordsPane.tsx` and `FacilitatorChat.tsx`.
+
+### Sticky title visual artefacts
+**What to test:** Slowly scroll the reading pane. Does the title block stay cleanly pinned, with body text sliding underneath it? Any flicker, peek-through above the header, or jump at the point where sticky kicks in?
+**Why:** The `-mt-10 pt-10` trick on the sticky block cancels the parent's `py-10` top padding. If the values don't match, there will be a gap at the top of the scroll container where the warm page background shows through.
+**If text peeks above the sticky header:** Adjust `-mt-10 pt-10` to a larger value (e.g. `-mt-12 pt-12`) to extend the sticky background further upward.
+
+### Lens response length after tightening
+**What to test:** Invoke each of the three personas across different passages. Count sentences in the response. Are responses consistently 2-3 sentences total (framing phrase counts)?
+**Why:** `maxTokens` dropped from 250 to 180 and `BASE_CONSTRAINTS` now says "2-3 sentences TOTAL, including the framing phrase." If responses still drift, the next lever is a hard truncation marker or moving the constraint to the very last line of each system prompt.
+**If responses still drift long:** Move `BASE_CONSTRAINTS` to be the final block in each persona's `systemPrompt` (after the Avoid list) — models attend more to recency. Also consider: "If you exceed 3 sentences, stop mid-sentence rather than adding a fourth."
+
+---
+
 ## Lenses (plan-09)
 
-### Lens demarcation clarity
-**What to test:** Invoke a persona. Read the response that lands in chat. Does the combination of italic text + right-alignment + left/right accent border + persona header above read as clearly distinct from facilitator responses? Or does it blur with synthesis responses (which are also assistant-role)?
-**Why:** The visual treatment is doing double duty — it signals "this is a different voice, not the coach" AND anchors the framing phrase from the model. If the combo feels over-engineered or still muddy, simplify: drop the header and rely on italics/alignment alone, or vice versa.
-**If it feels wrong:** Edit `LensBubble` in `client/src/components/prototype/FacilitatorChat.tsx`. Start by toggling the header off (`{message.personaName} — a different lens`) — if the framing phrase from the model carries it, the header is redundant. If still unclear, try a left-border-only treatment (drop `border-r-2`) so it reads more like a blockquote.
+### Lens demarcation clarity *(italic dropped in plan-10 — re-verify)*
+**What to test:** Invoke a persona. Read the response in chat. Does the combination of right-alignment + left/right accent border + persona header above read as clearly distinct from facilitator responses — without italics?
+**Why:** Plan-10 dropped `italic` from `LensBubble`. The remaining three signals (right-align, accent border, persona header) now carry all the demarcation load. Verify they're still enough. Also see "Lens header vs framing phrase" in the plan-10 section above — if the framing phrase is consistent, the header may be redundant.
+**If it feels muddy:** Try `font-medium` on the lens bubble `<p>` as a non-italic differentiator. Or restore `italic` if the readability tradeoff was wrong. Edit `LensBubble` in `client/src/components/prototype/FacilitatorChat.tsx`.
 
 ### Framing phrase consistency
 **What to test:** Invoke each of the three personas across several different passages. Do responses reliably open with "If I were [persona name] looking at this, I'd say…" or a close variant? Or does the model occasionally drop the phrase and dive straight into the reading?
 **Why:** The framing phrase is the semantic marker that reinforces whose lens the reader is getting — it's not just politeness. The `BASE_CONSTRAINTS` in `server/src/lib/personas.ts` requires it, but models drift under long system prompts.
 **If it feels wrong:** Tighten the opening instruction in `BASE_CONSTRAINTS`. Try moving it to the very last line of the system prompt (models attend more to recency) and adding a negative: "Never open without your framing phrase — the reader must know whose voice this is immediately."
 
-### Persona button discoverability
-**What to test:** Ask a fresh viewer (or pretend to be one) to try using a lens. Is the vertical pane on the far right noticed? Does the default-expanded state help or feel intrusive? Does the pane label ("Use a context lens") communicate intent?
-**Why:** The pull model only works if the reader knows the option exists. A pane that blends into the layout or a label that doesn't explain what a "lens" is will go unused.
-**If it feels wrong:** (a) Pane not noticed → try an accent-coloured label or a subtle icon (e.g. `Eye` from lucide-react) in the header. (b) Label unclear → rename to "Read it differently" or "Another angle." (c) Pane feels intrusive → default to collapsed (`lensPaneExpanded` initial state in `PrototypeSlide`).
+### Persona button discoverability *(default changed to collapsed in plan-10 — re-verify)*
+**What to test:** Create a highlight — the lens pane should auto-expand. Is the auto-expand noticeable enough to signal the lenses are now available? Does the 48px collapsed strip (before any highlight) register as "something is there"?
+**Why:** Plan-10 changed `lensPaneExpanded` default to `false`. The lens pane now starts collapsed and auto-expands on first highlight activation. This trades immediate visibility for a cleaner initial layout. Verify the auto-expand moment reads as intentional (something appearing in response to the highlight), not as a UI glitch.
+**If the auto-expand feels unnoticed:** Consider a subtle animation or a brief label flash when expanding. Or revert to default-expanded if the collapsed-first approach loses too many users.
+**If the 48px strip is confusing before a highlight:** Add a `title` tooltip to the collapsed strip chevron ("Context lenses — highlight a passage to use").
 
 ### Chat full-height feel
 **What to test:** Use the prototype with the new layout. Does the chat finally have room to breathe? Compare against a memory of the old split (chat cramped in the top half, buddies below). Does the conversation feel like the primary thread, with the lens as a supplement?
