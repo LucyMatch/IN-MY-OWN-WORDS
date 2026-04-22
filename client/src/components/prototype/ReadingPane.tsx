@@ -61,6 +61,7 @@ export function ReadingPane({
       text: buildHighlightText(blocks, ranges),
       bubbles: [],
       buddyResponses: [],
+      chatHistory: [],
       commitReady: false,
       createdAt: new Date().toISOString(),
     }

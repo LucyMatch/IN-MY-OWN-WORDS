@@ -105,6 +105,11 @@ export type Highlight = {
   /** Buddy responses (parallel call results). May be empty if not consulted. */
   buddyResponses: BuddyResponse[]
   /**
+   * Chat thread for this highlight. Added in plan-08.
+   * Persists with the highlight — each highlight owns its conversation.
+   */
+  chatHistory: ChatMessage[]
+  /**
    * Transient. Stripped before save (plan-06). Defaults to false on load.
    * Re-populated by the classifier on the next synthesis turn.
    */

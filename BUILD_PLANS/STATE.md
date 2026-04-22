@@ -6,7 +6,7 @@ What's built, what's working. Updated at the end of every build session.
 
 ---
 
-**Last updated:** 2026-04-21 (plan-07 complete)
+**Last updated:** 2026-04-21 (plan-08 complete)
 
 ---
 
@@ -67,6 +67,13 @@ What's built, what's working. Updated at the end of every build session.
 - `PrototypeSlide` — `consultingHighlights: Set<string>` state; `sendConsult` (staggered 250ms per card); `reRunBuddy` (re-fires all, takes matching buddy); `verifyBuddyResponse` (marks `verifying: true`, appends `verification`). `addBubble` fires consult on first bubble only (guard: `bubbles.length === 0 && buddyResponses.length === 0`).
 - `BuddyPanel` — full rewrite: `EmptyState`, `NotYetState`, `LoadingSkeleton` (inline + full-height), `BuddyCard` (name, response, Verify link, re-run RefreshCw icon, verification block). Disabled "Add a buddy" placeholder button. `isConsulting` drives skeleton visibility.
 
+### Highlight-scoped chats (plan-08)
+- `shared/types.ts` — `Highlight.chatHistory: ChatMessage[]` added
+- `PrototypeSlide` — top-level `chatHistory` state and `chatHistoryRef` removed; session-switch effect no longer clears chat; `addHighlight` defaults `chatHistory: []`; `sendSynthesisTurn` and `sendChatMessage` read/write the specific highlight's chat (captured `highlightId`, not `activeHighlightId`) — handles mid-call highlight switch; `activeChatHistory` derived from `activeHighlight`
+- `FacilitatorChat` — `hasActiveHighlight` prop added; shows "Highlight a passage to start a conversation about it." empty state with input hidden when no highlight active
+- `persistence.ts` — `chatHistory: h.chatHistory ?? []` default on hydration for older saves
+- `ReadingPane` — new highlight objects include `chatHistory: []`
+
 ### Persistence (plan-06)
 
 - `client/src/lib/persistence.ts` — NEW; `loadHighlights` (GET /api/highlights, maps `commitReady: false` on hydration), `saveHighlights` (POST /api/highlights, fire-and-forget), `sanitizeForSave` (strips `commitReady`).
@@ -122,6 +129,8 @@ What's built, what's working. Updated at the end of every build session.
 **Plan 05** ✓ — `plan-05-buddies-wireup.md` — done. Real personas with Mode A/B logic; consult fires on first bubble staged; staggered card arrival; Verify + re-run; disabled Add-a-buddy placeholder.
 
 **Plan 06** ✓ — `plan-06-persistence.md` — done. Highlights survive reload and session switch; `commitReady` stripped on save; hydration guard prevents spurious POST on initial load; per-session clear with confirm flow; delete-one buddy response (Minus icon).
+
+**Plan 08** ✓ — `plan-08-highlight-scoped-chats.md` — done. Chat moved from session-scoped top-level state to per-highlight `chatHistory` field. Every write targets the captured `highlightId`, not `activeHighlightId` — mid-call highlight switch handled. Chat persists via existing save effect. `FacilitatorChat` shows empty state with input hidden when no highlight active. Committed highlights keep chat open.
 
 After plan-06 the main build track is complete. Post-MVP work lives in feature plans (see BUILD_PLANS/feature-*.md):
 - `feature-01-resize-aware-delete-button.md` — × button tracks highlight on viewport resize

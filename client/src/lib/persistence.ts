@@ -15,7 +15,7 @@ export async function loadHighlights(): Promise<Highlight[]> {
       return []
     }
     const data = (await response.json()) as Highlight[]
-    return data.map((h) => ({ ...h, commitReady: false }))
+    return data.map((h) => ({ ...h, commitReady: false, chatHistory: h.chatHistory ?? [] }))
   } catch (err) {
     console.error('[persistence] load error', err)
     return []

@@ -16,16 +16,8 @@ export function PrototypeSlide() {
   const [error, setError] = useState<string | null>(null)
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null)
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
   const [facilitatorLoading, setFacilitatorLoading] = useState(false)
   const [consultingHighlights, setConsultingHighlights] = useState<Set<string>>(new Set())
-
-  // Ref so async synthesis calls can read the latest chatHistory without
-  // going stale inside their closure. We update it on every render.
-  const chatHistoryRef = useRef<ChatMessage[]>(chatHistory)
-  useEffect(() => {
-    chatHistoryRef.current = chatHistory
-  }, [chatHistory])
 
   // hasHydratedRef: false until initial load completes.
   // skipNextSaveRef: set true just before setHighlights(loaded) so the save-effect
@@ -85,12 +77,12 @@ export function PrototypeSlide() {
     // Highlights are NOT cleared on session switch — flat array, filtered at render time.
     // Only session-local UI state gets reset.
     setActiveHighlightId(null)
-    setChatHistory([])
   }, [activeSessionId])
 
   function addHighlight(h: Highlight) {
-    setHighlights((prev) => [...prev, h])
-    setActiveHighlightId(h.id)
+    const withChat: Highlight = { ...h, chatHistory: h.chatHistory ?? [] }
+    setHighlights((prev) => [...prev, withChat])
+    setActiveHighlightId(withChat.id)
   }
 
   function deleteHighlight(id: string) {
@@ -110,15 +102,27 @@ export function PrototypeSlide() {
     const focusBubble = currentBubbles.find((b) => b.id === focusBubbleId)
     if (!focusBubble) return
 
+    // Read the current chat for this specific highlight at call time.
+    const highlight = highlights.find((h) => h.id === highlightId)
+    const currentChat = highlight?.chatHistory ?? []
+
     const syntheticUserMessage: ChatMessage = {
       role: 'user',
       content: `[staged: '${focusBubble.text}']`,
       kind: 'synthesis',
     }
 
-    // Build the updated history before setState — we need it for the API call
-    const historyBeforeCall = [...chatHistoryRef.current, syntheticUserMessage]
-    setChatHistory(historyBeforeCall)
+    const historyBeforeCall = [...currentChat, syntheticUserMessage]
+
+    // Append the synthetic user message immediately (for UI feedback).
+    // All writes target highlightId, not activeHighlightId — handles mid-call highlight switch.
+    setHighlights((prev) =>
+      prev.map((h) =>
+        h.id === highlightId
+          ? { ...h, chatHistory: [...h.chatHistory, syntheticUserMessage] }
+          : h,
+      ),
+    )
     setFacilitatorLoading(true)
 
     try {
@@ -151,10 +155,13 @@ export function PrototypeSlide() {
           facilitatorRes.status === 501
             ? 'Facilitator unavailable — API key not configured.'
             : 'Facilitator call failed. Please try again.'
-        setChatHistory((prev) => [
-          ...prev,
-          { role: 'assistant', content: errMsg, kind: 'chat' },
-        ])
+        setHighlights((prev) =>
+          prev.map((h) =>
+            h.id === highlightId
+              ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: errMsg, kind: 'chat' }] }
+              : h,
+          ),
+        )
         return
       }
 
@@ -164,7 +171,13 @@ export function PrototypeSlide() {
         content: facilitatorData.text,
         kind: 'synthesis',
       }
-      setChatHistory((prev) => [...prev, assistantMessage])
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId
+            ? { ...h, chatHistory: [...h.chatHistory, assistantMessage] }
+            : h,
+        ),
+      )
 
       // Second call: classifier
       const commitBody: CommitCheckRequest = {
@@ -188,26 +201,41 @@ export function PrototypeSlide() {
         )
       }
     } catch {
-      setChatHistory((prev) => [
-        ...prev,
-        { role: 'assistant', content: 'Something went wrong. Please try again.', kind: 'chat' },
-      ])
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId
+            ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: 'Something went wrong. Please try again.', kind: 'chat' }] }
+            : h,
+        ),
+      )
     } finally {
       setFacilitatorLoading(false)
     }
   }
 
   async function sendChatMessage(text: string) {
+    if (!activeHighlightId) return
+    const highlightId = activeHighlightId
+    const targetHighlight = highlights.find((h) => h.id === highlightId)
+    if (!targetHighlight) return
+
     const userMessage: ChatMessage = { role: 'user', content: text, kind: 'chat' }
-    const historyBeforeCall = [...chatHistoryRef.current, userMessage]
-    setChatHistory(historyBeforeCall)
+    const historyBeforeCall = [...targetHighlight.chatHistory, userMessage]
+
+    // All writes target highlightId, not activeHighlightId — handles mid-call highlight switch.
+    setHighlights((prev) =>
+      prev.map((h) =>
+        h.id === highlightId
+          ? { ...h, chatHistory: [...h.chatHistory, userMessage] }
+          : h,
+      ),
+    )
     setFacilitatorLoading(true)
 
     try {
-      const activeHighlight = highlights.find((h) => h.id === activeHighlightId)
       const body: FacilitatorRequest = {
         messages: historyBeforeCall,
-        highlight: activeHighlight?.text,
+        highlight: targetHighlight.text,
         session: activeSession
           ? {
               title: activeSession.title,
@@ -228,20 +256,32 @@ export function PrototypeSlide() {
           res.status === 501
             ? 'Facilitator unavailable — API key not configured.'
             : 'Facilitator call failed. Please try again.'
-        setChatHistory((prev) => [...prev, { role: 'assistant', content: errMsg, kind: 'chat' }])
+        setHighlights((prev) =>
+          prev.map((h) =>
+            h.id === highlightId
+              ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: errMsg, kind: 'chat' }] }
+              : h,
+          ),
+        )
         return
       }
 
       const data = (await res.json()) as FacilitatorResponse
-      setChatHistory((prev) => [
-        ...prev,
-        { role: 'assistant', content: data.text, kind: 'chat' },
-      ])
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId
+            ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: data.text, kind: 'chat' }] }
+            : h,
+        ),
+      )
     } catch {
-      setChatHistory((prev) => [
-        ...prev,
-        { role: 'assistant', content: 'Something went wrong. Please try again.', kind: 'chat' },
-      ])
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId
+            ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: 'Something went wrong. Please try again.', kind: 'chat' }] }
+            : h,
+        ),
+      )
     } finally {
       setFacilitatorLoading(false)
     }
@@ -535,6 +575,7 @@ export function PrototypeSlide() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
   const activeHighlight = highlights.find((h) => h.id === activeHighlightId) ?? null
+  const activeChatHistory = activeHighlight?.chatHistory ?? []
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -570,9 +611,10 @@ export function PrototypeSlide() {
       />
       <div className="border-border-soft flex w-[360px] flex-shrink-0 flex-col border-l">
         <FacilitatorChat
-          messages={chatHistory}
+          messages={activeChatHistory}
           loading={facilitatorLoading}
           onSend={sendChatMessage}
+          hasActiveHighlight={activeHighlightId !== null}
         />
         <BuddyPanel
           activeHighlight={activeHighlight}

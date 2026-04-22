@@ -94,17 +94,27 @@ Updated as plans complete.
 **Why:** The response might return after state has moved. Could orphan a message or crash.
 **If it feels wrong:** Add an AbortController to in-flight facilitator calls, clean up on session switch.
 
-### Switch highlight mid-facilitator-call (plan-04)
-**What to test:** Same but switch highlight instead of session.
-**Why:** Chat is session-scoped, so response should land in the same thread — but worth verifying.
+### Mid-call highlight switch (plan-08)
+
+**What to test:** Stage a description on highlight A. Before the facilitator response arrives, click a different highlight B. When the response lands, verify it appears on A's chat thread — NOT B's. Then click back to A and confirm the message is there; click B and confirm its chat is unaffected.
+**Why:** Both `sendSynthesisTurn` and `sendChatMessage` capture `highlightId` at call time and target that specific highlight for all writes — not `activeHighlightId` at response time. This test verifies the pattern holds under real latency.
+
+### Committed chat re-engagement (plan-08)
+
+**What to test:** Commit a highlight (yellow → green). Click it to make it active again. Type a question in the chat input. Facilitator should respond, anchored to that passage — no synthesis-mode call fires (no new descriptions being staged), just a plain chat call.
+**Why:** Committed highlights keep their chat thread open. The reader should be able to revisit and continue the conversation. Verify the input is not disabled on a committed highlight, and that the facilitator's response is contextually appropriate (no confusion from the committed state).
+**If it feels wrong:** The committed flag lives on bubbles, not on the highlight itself. Nothing in `sendChatMessage` checks for committed state — by design. If the facilitator behaves oddly, check whether the synthesis context is leaking into a chat-mode call.
 
 ### Delete the active highlight (plan-03)
+
 **What to test:** Delete the currently-active highlight via the × button. Middle pane should clear to instruction state.
 **If it feels wrong:** Check `activeHighlightId` nullification in `deleteHighlight`.
 
-### Empty chat + no highlight (plan-04)
-**What to test:** Fresh session, no highlights, type a chat message. Facilitator should respond in general-reading mode (no synthesis, no classifier).
-**Why:** Both modes share one thread; the "no active highlight" branch must work.
+### No-highlight empty state (plan-08)
+
+**What to test:** Fresh session, no highlights — chat pane shows "Highlight a passage to start a conversation about it." and the input is hidden. Make a highlight → chat input appears. Click the active highlight mark a second time to deselect it → empty state returns.
+**Why:** Chat is now highlight-scoped. There is no general chat mode — the reader must anchor questions to a passage. Verify the empty state instructs rather than confuses.
+**If it feels wrong:** Copy in `FacilitatorChat.tsx` no-highlight branch. The message should feel like a prompt, not an error.
 
 ---
 
@@ -183,7 +193,7 @@ Updated as plans complete.
 
 ### Reload test — full round-trip
 
-**What to test:** Create a highlight → stage 2 bubbles → commit → wait for buddy responses → hard reload (`Ctrl+R`). Verify: highlights come back; bubbles are present with correct committed state; buddy responses are present; `commitReady` is `false` (commit button is in disabled/"Commit anyway" state, not green); chat history is empty.
+**What to test:** Create a highlight → stage 2 bubbles → commit → wait for buddy responses → hard reload (`Ctrl+R`). Verify: highlights come back; bubbles are present with correct committed state; buddy responses are present; `commitReady` is `false` (commit button is in disabled/"Commit anyway" state, not green); chat history is present and intact (synthesis turns visible, not cleared).
 **Why:** This is the core DoD test. Any missing field or wrong shape means the serialisation is dropping something.
 **If data is wrong:** Check the network tab — does the GET /api/highlights response match what was POSTed? If they differ, the shape mismatch is in `sanitizeForSave` or a stale `highlights.json` from before plan-06.
 

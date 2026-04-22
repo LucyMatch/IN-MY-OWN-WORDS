@@ -8,9 +8,10 @@ type FacilitatorChatProps = {
   messages: ChatMessage[]
   loading: boolean
   onSend: (text: string) => void
+  hasActiveHighlight: boolean
 }
 
-export function FacilitatorChat({ messages, loading, onSend }: FacilitatorChatProps) {
+export function FacilitatorChat({ messages, loading, onSend, hasActiveHighlight }: FacilitatorChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottomRef = useRef(true)
 
@@ -27,6 +28,19 @@ export function FacilitatorChat({ messages, loading, onSend }: FacilitatorChatPr
     if (!el) return
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
     atBottomRef.current = distanceFromBottom < 80
+  }
+
+  if (!hasActiveHighlight) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="border-border-subtle flex items-center border-b px-4 pb-2 pt-4">
+          <p className="text-text-tertiary text-xs uppercase tracking-widest">Chat</p>
+        </div>
+        <div className="text-text-tertiary flex flex-1 flex-col items-center justify-center px-6 text-center text-sm">
+          <p>Highlight a passage to start a conversation about it.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
