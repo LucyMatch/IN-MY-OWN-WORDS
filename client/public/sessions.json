@@ -1,0 +1,16 @@
+[
+  {
+    "id": "pride-and-prejudice",
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "section": "Chapter 8",
+    "filename": "pride-and-prejudice.txt"
+  },
+  {
+    "id": "romeo-and-juliet",
+    "title": "Romeo and Juliet",
+    "author": "William Shakespeare",
+    "section": "Act 3, Scene 1",
+    "filename": "romeo-and-juliet.txt"
+  }
+]

@@ -1,0 +1,2 @@
+# Highlights JSON storage lives here at runtime.
+# `highlights.json` is gitignored — keep this folder tracked but its contents transient.
