@@ -75,10 +75,11 @@ Updated as plans complete.
 **Why:** Produces a zero-width range in the last paragraph. Claude Code flagged this is invisible but adds a zero-width mark entry.
 **If it feels wrong:** Filter zero-width ranges in `computeRangesFromSelection`.
 
-### Resize after placing highlights (plan-02, known limitation)
-**What to test:** Place highlights. Resize the window or collapse/expand a panel. Do the × delete buttons drift?
-**Why:** Known issue — `useLayoutEffect` doesn't re-run on resize.
-**If it feels wrong:** `feature-01-resize-aware-delete-button.md` covers the fix. Implement if time allows.
+### Resize after placing highlights *(resolved in plan-11)*
+
+**What to test:** Place highlights. Resize the window or collapse/expand any pane (Sessions, IYOW, Lens). × delete buttons should track their marks.
+**Why:** Fixed in plan-11 via `ResizeObserver` on `paragraphsRootRef.current`. `recomputeMarkerPositions` extracted as a `useCallback`; fires on both content changes (`useLayoutEffect`) and container resize (`useEffect`).
+**If buttons still drift:** Check `ResizeObserver` is observing `paragraphsRootRef.current` (not the outer scroll container). If a "ResizeObserver loop" warning appears, wrap the callback in `requestAnimationFrame` as noted in the plan.
 
 ### Click outside on a mark while editing a bubble (plan-03)
 **What to test:** Start editing a staged bubble, then click a mark in the reading pane before saving. What happens to the edit draft?
@@ -119,6 +120,17 @@ Updated as plans complete.
 ---
 
 ## Visual & aesthetic
+
+### ConceptSlide line size at presentation display (plan-11)
+
+**What to test:** At the display size you'll use for the video recording, does `text-3xl` read comfortably, or does it feel small relative to the centred layout?
+**If it feels wrong:** Bump both `<p>` elements in `ConceptSlide.tsx` from `text-3xl` to `text-4xl`. One-line change per element.
+
+### Section label fixed-width calibration (plan-11)
+
+**What to test:** Navigate between any context slide and the Prototype slide. Do the arrows (ChevronLeft / ChevronRight) stay horizontally fixed, or do they shift when the label switches between "Context" and "Prototype"?
+**Why:** The label is wrapped in `min-w-[96px] inline-block` to prevent jitter. "Prototype" (9 chars) is wider than "Context" (7 chars) — if 96px is too tight, "Prototype" may push the arrows right.
+**If arrows shift:** Increase `min-w-[96px]` to `min-w-[100px]` or `min-w-[104px]` in `Toolbar.tsx`. Eyeball and adjust.
 
 ### Active mark orange ring opacity (plan-03)
 **What to test:** Activate a highlight. Is the 40% opacity orange ring readable without overwhelming the yellow?
@@ -327,7 +339,7 @@ These are the moments that sell the pitch. They must work on the first try durin
 
 ## Parked issues (being handled elsewhere)
 
-- **× button drift on resize** → `feature-01-resize-aware-delete-button.md`
+- **× button drift on resize** → resolved in plan-11 (ResizeObserver in `ReadingPane.tsx`)
 - **Staged bubble label redundancy** → `feature-02-small-fixes.md` (Fix 01)
 - **Clicking a mark inside a selection** — acceptable for prototype
 - **Typos triggering facilitator call on edit-save** — feature of the design, not a bug

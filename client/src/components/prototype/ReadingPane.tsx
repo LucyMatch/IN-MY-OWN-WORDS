@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -38,7 +38,7 @@ export function ReadingPane({
   const paragraphsRootRef = useRef<HTMLDivElement>(null)
   const [markerPositions, setMarkerPositions] = useState<Record<string, number>>({})
 
-  useLayoutEffect(() => {
+  const recomputeMarkerPositions = useCallback(() => {
     if (!paragraphsRootRef.current) return
     const root = paragraphsRootRef.current
     const next: Record<string, number> = {}
@@ -50,7 +50,20 @@ export function ReadingPane({
       next[h.id] = mark.offsetTop
     }
     setMarkerPositions(next)
-  }, [highlights, text])
+  }, [highlights])
+
+  useLayoutEffect(() => {
+    recomputeMarkerPositions()
+  }, [recomputeMarkerPositions, text])
+
+  useEffect(() => {
+    if (!paragraphsRootRef.current) return
+    const observer = new ResizeObserver(() => {
+      recomputeMarkerPositions()
+    })
+    observer.observe(paragraphsRootRef.current)
+    return () => observer.disconnect()
+  }, [recomputeMarkerPositions])
 
   function handleMouseUp() {
     if (!paragraphsRootRef.current) return

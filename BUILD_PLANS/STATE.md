@@ -6,7 +6,7 @@ What's built, what's working. Updated at the end of every build session.
 
 ---
 
-**Last updated:** 2026-04-21 (plan-10 complete)
+**Last updated:** 2026-04-22 (plan-11 complete)
 
 ---
 
@@ -165,6 +165,15 @@ What's built, what's working. Updated at the end of every build session.
 **Plan 09** ✓ — `plan-09-lenses-in-chat.md` — done. Buddy panel replaced with Lens pane. Three personas (English Teacher, Historian, Reframer) are now on-demand buttons in a vertical far-right pane. Lens responses land in the highlight's chat thread as `kind:'lens'` messages — italic, right-aligned, left/right accent border, persona header above. Chat pane is now full-height (`flex-1`). Old buddy saves with `buddyResponses` hydrate cleanly (field stripped on load). `plan-08-alt-lenses-in-chat.md` archived.
 
 **Plan 10** ✓ — `plan-10-layout-and-polish.md` — done. Reading pane locked to 40% (`basis-[40%] flex-shrink-0`, adjusted from initial 50% post-testing). Lens auto-expands on highlight activation. IYOW empty input moved to bottom, `bg-page`, chevrons flipped. Sessions pane auto-collapses on highlight creation, bubble staging, scroll. Reading pane title sticky. Hamburger toggles. Lens responses drop italic. Lens token cap 180, prompt tightened to 2-3 sentences TOTAL. Typechecks clean.
+
+**Plan 11** ✓ — `plan-11-deck-strip-down.md` — done. Deck stripped to four slides: Title, Concept, Viewing Guide, Prototype. `SlideSection` narrowed to `'context' | 'prototype'`. Three orphan slide files deleted (`UserJourneySlide`, `ConsiderationsSlide`, `NextStepsSlide`) — no orphan imports in other files (they were only referenced in `slides.config.tsx`). TitleSlide and ConceptSlide copy rewritten. `ViewingGuideSlide` created with expand/collapse (default closed). Toolbar restructured: brand + section label (fixed-width `min-w-[96px]`) + arrows + counter on left; filled orange `variant="primary"` Jump to Prototype CTA centred absolutely; hamburger only on right. ReadingPane resize fix rolled up from `feature-01`: `recomputeMarkerPositions` extracted as `useCallback`; existing `useLayoutEffect` uses it; new `useEffect` sets up `ResizeObserver` on `paragraphsRootRef.current`, cleans up on unmount. Typechecks clean (both workspaces).
+
+**feature-01** — `feature-01-resize-aware-delete-button.md` — RESOLVED as part of plan-11. ResizeObserver wired in ReadingPane.tsx. File left in BUILD_PLANS/ per plan spec.
+
+**Post-plan-11 open items:**
+
+- `TEST_LIST.md` — "Section label fixed-width calibration": verify 96px is enough for "PROTOTYPE" without truncation; adjust to 100px/104px if needed.
+- `TEST_LIST.md` — "ConceptSlide line size at presentation display": if text-3xl looks small at demo size, bump to text-4xl.
 
 **Post-plan-10 adjustments** (no plan file — captured here):
 - `InYourOwnWordsPane.tsx` — all three commit footer states use `pb-[50px]` (was `py-3`) so the commit button sits 50px above pane bottom.

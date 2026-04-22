@@ -15,7 +15,7 @@ export function Toolbar() {
       className="relative flex w-full items-center border-b border-border-soft bg-surface px-4 shrink-0"
       style={{ height: 'var(--header-height)' }}
     >
-      {/* Left: title + section label — flex-1 to mirror right zone */}
+      {/* Left zone — brand, section label (fixed-width), arrows + counter */}
       <div className="flex-1 flex items-center gap-2">
         <button
           onClick={() => goTo(0)}
@@ -25,48 +25,48 @@ export function Toolbar() {
           In Your Own Words
         </button>
         <span className="text-text-tertiary text-xs select-none">|</span>
-        <span className="text-text-tertiary text-xs uppercase tracking-wide">
+        <span className="text-text-tertiary text-xs uppercase tracking-wide min-w-[96px] inline-block">
           {currentSlide.sectionLabel}
         </span>
+        <div className="flex items-center gap-2 ml-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goPrev}
+            disabled={isFirst}
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <span className="text-text-tertiary text-xs tabular-nums w-8 text-center">
+            {activeIndex + 1} / {slides.length}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goNext}
+            disabled={isLast}
+            aria-label="Next slide"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Center: nav arrows — absolutely centered, counter fixed-width so arrows don't shift */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+      {/* Center zone — Jump to Prototype CTA */}
+      <div className="absolute left-1/2 -translate-x-1/2">
         <Button
-          variant="ghost"
-          size="icon"
-          onClick={goPrev}
-          disabled={isFirst}
-          aria-label="Previous slide"
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        <span className="text-text-tertiary text-xs tabular-nums w-8 text-center">
-          {activeIndex + 1} / {slides.length}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={goNext}
-          disabled={isLast}
-          aria-label="Next slide"
-        >
-          <ChevronRight className="size-4" />
-        </Button>
-      </div>
-
-      {/* Right zone — flex-1 mirrors left, justify-between with w-8 spacer centers the button */}
-      <div className="flex-1 flex items-center justify-between">
-        <div className="w-8" />
-        <Button
-          variant="ghost"
+          variant="primary"
           size="sm"
           onClick={goToPrototype}
           disabled={isOnPrototype}
-          className="text-accent-strong text-xs"
         >
-          Jump to prototype
+          Jump to Prototype
         </Button>
+      </div>
+
+      {/* Right zone — hamburger */}
+      <div className="flex-1 flex items-center justify-end">
         <Button
           variant="ghost"
           size="icon"
