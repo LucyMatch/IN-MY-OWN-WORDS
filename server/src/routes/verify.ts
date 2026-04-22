@@ -16,7 +16,7 @@
 
 import { Router } from 'express'
 import { callClaude } from '../lib/anthropic.js'
-import { BUDDIES } from '../lib/buddies.js'
+import { PERSONAS } from '../lib/personas.js'
 import type { VerifyRequest, VerifyResponse } from '@shared/types'
 
 export const verifyRoute = Router()
@@ -42,9 +42,9 @@ verifyRoute.post('/verify', async (req, res) => {
 
   // If the buddyId is supplied and matches a known buddy, mention its
   // persona so the verification stays in-character. Otherwise generic.
-  const buddy = buddyId ? BUDDIES.find((b) => b.id === buddyId) : undefined
-  const personaContext = buddy
-    ? `\n\nThe original response came from "${buddy.name}" (${buddy.description}). Stay roughly in that voice while reviewing.`
+  const persona = buddyId ? PERSONAS.find((p) => p.id === buddyId) : undefined
+  const personaContext = persona
+    ? `\n\nThe original response came from "${persona.name}" (${persona.subtitle}). Stay roughly in that voice while reviewing.`
     : ''
 
   const userMessage = `Passage:\n"${highlight}"\n\nPrevious response:\n"${originalResponse}"\n\nReview it.`

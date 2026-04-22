@@ -29,7 +29,8 @@ import express from 'express'
 import cors from 'cors'
 
 import { healthRoute } from './routes/health.js'
-import { consultRoute } from './routes/consult.js'
+import { lensRoute } from './routes/lens.js'
+import { personasRoute } from './routes/personas.js'
 import { commitCheckRoute } from './routes/commitCheck.js'
 import { facilitatorRoute } from './routes/facilitator.js'
 import { verifyRoute } from './routes/verify.js'
@@ -47,7 +48,8 @@ app.use(cors())
 
 // API routes — order doesn't matter, all under /api.
 app.use('/api', healthRoute)
-app.use('/api', consultRoute)
+app.use('/api', lensRoute)
+app.use('/api', personasRoute)
 app.use('/api', commitCheckRoute)
 app.use('/api', facilitatorRoute)
 app.use('/api', verifyRoute)

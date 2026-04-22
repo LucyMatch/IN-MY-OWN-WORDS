@@ -145,41 +145,27 @@ Updated as plans complete.
 
 ---
 
-## Buddies (plan-05)
+## Lenses (plan-09)
 
-### Buddy persona distinctiveness
-**What to test:** Stage a bubble on a passage, wait for all three buddy cards. Read them in sequence — do English Teacher, Historian, and Reframer sound like genuinely different experts, or do they blend together?
-**Why:** The whole buddy system fails if three cards deliver the same shape of response in slightly different words. Distinct register and distinct *angle* (craft vs context vs visual translation) is the point.
-**If it feels wrong:** Tighten the "Voice:" and "Avoid:" blocks in each persona's `systemPrompt` in `server/src/lib/buddies.ts`. The Reframer in particular should be the most visually concrete; if it sounds like a generic literary critic, the "what the eye sees" framing needs strengthening.
+### Lens demarcation clarity
+**What to test:** Invoke a persona. Read the response that lands in chat. Does the combination of italic text + right-alignment + left/right accent border + persona header above read as clearly distinct from facilitator responses? Or does it blur with synthesis responses (which are also assistant-role)?
+**Why:** The visual treatment is doing double duty — it signals "this is a different voice, not the coach" AND anchors the framing phrase from the model. If the combo feels over-engineered or still muddy, simplify: drop the header and rely on italics/alignment alone, or vice versa.
+**If it feels wrong:** Edit `LensBubble` in `client/src/components/prototype/FacilitatorChat.tsx`. Start by toggling the header off (`{message.personaName} — a different lens`) — if the framing phrase from the model carries it, the header is redundant. If still unclear, try a left-border-only treatment (drop `border-r-2`) so it reads more like a blockquote.
 
-### Mode A vs Mode B decisions
-**What to test:** Stage a bubble that is genuinely tight (captures the passage well), then stage a bubble that has a real gap (over-simplifies, misses the form, flattens two ideas into one). Check which buddies go Mode A vs Mode B in each case — and whether Mode B critiques name the gap fairly rather than manufacturing one.
-**Why:** The A/B classifier is load-bearing. A buddy that always goes Mode B is annoying. A buddy that goes Mode A when there's real work to do is unhelpful. The "failure mode to avoid" in the prompt is manufacturing critique — test for that.
-**If it feels wrong:** Adjust the `MODE_LOGIC` constant in `server/src/lib/buddies.ts`. The phrase "If the reader is tight, Mode A is the honest move. Mode B only when there is real work" is the key signal — if the model is overriding it, add a concrete example of a tight bubble → Mode A to the prompt.
+### Framing phrase consistency
+**What to test:** Invoke each of the three personas across several different passages. Do responses reliably open with "If I were [persona name] looking at this, I'd say…" or a close variant? Or does the model occasionally drop the phrase and dive straight into the reading?
+**Why:** The framing phrase is the semantic marker that reinforces whose lens the reader is getting — it's not just politeness. The `BASE_CONSTRAINTS` in `server/src/lib/personas.ts` requires it, but models drift under long system prompts.
+**If it feels wrong:** Tighten the opening instruction in `BASE_CONSTRAINTS`. Try moving it to the very last line of the system prompt (models attend more to recency) and adding a negative: "Never open without your framing phrase — the reader must know whose voice this is immediately."
 
-### 250ms stagger reads as progressive arrival
-**What to test:** Stage a first bubble. Watch the three buddy cards appear. Does the stagger (card 1 immediately, card 2 after 250ms, card 3 after 500ms) feel like the buddies are thinking and arriving, or does it feel broken/slow/arbitrary?
-**Why:** This is fake streaming — the API returns all three at once. The stagger is UX sleight of hand. If it's too slow it reads as jank; too fast and they appear to all arrive simultaneously.
-**If it feels wrong:** Adjust the delay in `PrototypeSlide.sendConsult`. Try 150ms (tighter) or 350ms (more deliberate). Also check whether the "Buddies are reading" loading skeleton visible before first card appears reads correctly.
+### Persona button discoverability
+**What to test:** Ask a fresh viewer (or pretend to be one) to try using a lens. Is the vertical pane on the far right noticed? Does the default-expanded state help or feel intrusive? Does the pane label ("Use a context lens") communicate intent?
+**Why:** The pull model only works if the reader knows the option exists. A pane that blends into the layout or a label that doesn't explain what a "lens" is will go unused.
+**If it feels wrong:** (a) Pane not noticed → try an accent-coloured label or a subtle icon (e.g. `Eye` from lucide-react) in the header. (b) Label unclear → rename to "Read it differently" or "Another angle." (c) Pane feels intrusive → default to collapsed (`lensPaneExpanded` initial state in `PrototypeSlide`).
 
-### Verify output — useful or redundant?
-**What to test:** Click Verify on a buddy response. Read what appears in the verification block. Does it add new information — correcting a claim, flagging an overstatement, or confirming a strong take? Or does it just paraphrase the original?
-**Why:** The Verify button is a "discernment-as-feature" interaction — it's for readers who want to pressure-test a claim. If the verification just restates the original response, the button serves no purpose and should either be cut or its system prompt tightened.
-**If it feels wrong:** The `VERIFY_SYSTEM_PROMPT` is in `server/src/routes/verify.ts`. The instruction "If the response stands up, say so plainly and briefly. Don't pad." is the key line — if verifications are always neutral/confirmatory, add a step that looks harder for overstatements.
-
-### Re-run produces meaningfully different response
-**What to test:** Click the re-run (RefreshCw) icon on a buddy card. Does the new card that appears below deliver a genuinely different take — different Mode A/B decision, different angle, different example — or is it the same response with different words?
-**Why:** Re-run is only useful if it gives the reader a second perspective from the same buddy. Same-shape responses make the button pointless.
-**If it feels wrong:** Increasing temperature on buddy calls is the lever. Add `temperature: 0.9` to the `callClaude` call in `consult.ts` (currently uses default). Higher temperature increases response variation. Alternatively, pass a `randomSeed` or shuffle the prompt slightly to break determinism.
-
-### Panel state flow: NotYetState → LoadingSkeleton → cards
-**What to test:** Fresh highlight (no bubbles) → check panel shows NotYetState. Stage first bubble → check panel immediately shows LoadingSkeleton (not NotYetState). Responses arrive → check cards stagger in. Re-activate the same highlight → check stored responses render without a fresh API call.
-**Why:** The three states (not yet, loading, loaded) + the "persist on highlight" behaviour are the skeleton of the panel UX. If any transition misfires it reads as broken.
-**If it feels wrong:** Trace `consultingHighlights` set membership and `buddyResponses.length` in `PrototypeSlide`. The `isConsulting` prop to `BuddyPanel` is `activeHighlightId !== null && consultingHighlights.has(activeHighlightId)`.
-
-### Error state when API key missing
-**What to test:** With no `ANTHROPIC_API_KEY` set, stage a bubble. The server returns 501. Check that the error renders inline in the BuddyPanel as an error card (not a crash, not silence).
-**Why:** Demo insurance — if the key expires mid-recording, the error message "ANTHROPIC_API_KEY not configured…" should surface as a card, not a broken panel.
+### Chat full-height feel
+**What to test:** Use the prototype with the new layout. Does the chat finally have room to breathe? Compare against a memory of the old split (chat cramped in the top half, buddies below). Does the conversation feel like the primary thread, with the lens as a supplement?
+**Why:** This is THE visual unlock of plan-09 — the whole point of replacing the buddy panel. If the chat still feels cramped, check whether something is constraining the `flex-1` chat wrapper or whether the lens pane's 280px width is taking too much.
+**If it feels wrong:** (a) Chat still cramped → check the `div` wrapping `FacilitatorChat` has `flex min-w-0 flex-1 flex-col` and nothing is overriding it. (b) Lens pane feels too wide → reduce from `w-[280px]` to `w-[240px]` in `LensPane.tsx`. (c) Both panes feel wrong → try collapsing the lens pane by default and see if chat-only feels better as the baseline.
 
 ---
 

@@ -57,13 +57,36 @@ export function FacilitatorChat({ messages, loading, onSend, hasActiveHighlight 
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
-          messages.map((m, i) => <ChatBubble key={i} message={m} />)
+          messages.map((m, i) => {
+            if (m.kind === 'lens') return <LensBubble key={i} message={m} />
+            return <ChatBubble key={i} message={m} />
+          })
         )}
         {loading && <TypingIndicator />}
       </div>
 
       <div className="border-border-subtle border-t p-3">
         <ChatInput onSend={onSend} disabled={loading} />
+      </div>
+    </div>
+  )
+}
+
+function LensBubble({ message }: { message: ChatMessage }) {
+  return (
+    <div className="my-4 flex flex-col items-end">
+      <p className="text-text-tertiary mb-1 text-[10px] uppercase tracking-widest">
+        {message.personaName} — a different lens
+      </p>
+      <div
+        className={cn(
+          'border-accent-strong/40 bg-surface rounded-xl border-l-2 border-r-2 px-4 py-3',
+          'max-w-[85%]',
+        )}
+      >
+        <p className="text-text-primary whitespace-pre-line text-right text-sm italic leading-relaxed">
+          {message.content}
+        </p>
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 # Feature Plan 01 — Resize-Aware Delete Button
 
 **Type:** Polish / post-MVP.
-**Prerequisite:** All main build plans done. The highlight mechanic (plan-02) is in place.
+**Prerequisite:** Main build track done (plans 00–09). The highlight mechanic (plan-02) is in place and has not been materially changed by subsequent plans.
 
 Read `BUILD_PLANS/context.md` and `BUILD_PLANS/design-patterns.md` first.
 
@@ -26,6 +26,7 @@ Add a `ResizeObserver` on the paragraphs root container. When the container resi
 A window resize event fires on any window change, even ones that don't affect the paragraphs pane. The paragraphs root can also change width when:
 - The sessions panel collapses or expands.
 - The bubbles pane collapses or expands.
+- The lens pane collapses or expands (new in plan-09).
 - Any other layout shift that wasn't a window resize.
 
 `ResizeObserver` is the right primitive — it fires when the observed element's size changes, whatever the cause.
@@ -88,8 +89,8 @@ No new files, no type changes, no dependencies.
 - Resizing the browser window causes × buttons to re-align with their highlights.
 - Collapsing or expanding the sessions panel causes × buttons to re-align.
 - Collapsing or expanding the bubbles pane causes × buttons to re-align.
+- Collapsing or expanding the lens pane causes × buttons to re-align.
 - No console warnings about `ResizeObserver` loop limits (if they appear, wrap the callback in a `requestAnimationFrame`).
 - No visible jank — buttons move smoothly with the content, not in jarring snaps.
 - Typecheck passes both workspaces.
 - `BUILD_PLANS/STATE.md` known-issues section has the resize-drift item removed.
-</content>

@@ -14,8 +14,16 @@ export async function loadHighlights(): Promise<Highlight[]> {
       console.error('[persistence] load failed with status', response.status)
       return []
     }
-    const data = (await response.json()) as Highlight[]
-    return data.map((h) => ({ ...h, commitReady: false, chatHistory: h.chatHistory ?? [] }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await response.json()) as any[]
+    return data.map((h: any) => {
+      const { buddyResponses: _buddyResponses, ...rest } = h  // drop old field if present
+      return {
+        ...rest,
+        commitReady: false,
+        chatHistory: rest.chatHistory ?? [],
+      } as Highlight
+    })
   } catch (err) {
     console.error('[persistence] load error', err)
     return []

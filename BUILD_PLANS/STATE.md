@@ -6,7 +6,7 @@ What's built, what's working. Updated at the end of every build session.
 
 ---
 
-**Last updated:** 2026-04-21 (plan-08 complete)
+**Last updated:** 2026-04-21 (plan-09 complete)
 
 ---
 
@@ -66,6 +66,23 @@ What's built, what's working. Updated at the end of every build session.
 - `server/src/routes/consult.ts` — accepts `bubbles[]`, passes to `buildBuddyUserMessage`. Server generates `id`/`createdAt` for each `BuddyResponse`. Existing parallel fan-out logic unchanged.
 - `PrototypeSlide` — `consultingHighlights: Set<string>` state; `sendConsult` (staggered 250ms per card); `reRunBuddy` (re-fires all, takes matching buddy); `verifyBuddyResponse` (marks `verifying: true`, appends `verification`). `addBubble` fires consult on first bubble only (guard: `bubbles.length === 0 && buddyResponses.length === 0`).
 - `BuddyPanel` — full rewrite: `EmptyState`, `NotYetState`, `LoadingSkeleton` (inline + full-height), `BuddyCard` (name, response, Verify link, re-run RefreshCw icon, verification block). Disabled "Add a buddy" placeholder button. `isConsulting` drives skeleton visibility.
+
+### Lenses in chat (plan-09)
+- `shared/types.ts` — `BuddyResponse`, `BuddyMeta`, `ConsultRequest/Response`, `BuddiesResponse`, `Highlight.buddyResponses` removed; `Persona`, `LensRequest/Response`, `PersonasResponse` added; `ChatMessage.kind` extended with `'lens'`; `personaId`/`personaName` fields added to `ChatMessage`
+- `server/src/lib/personas.ts` — NEW; replaces `buddies.ts`; three personas (English Teacher, Historian, Reframer); `MODE_LOGIC` removed; framing-phrase requirement in `BASE_CONSTRAINTS`; `getPersonaRoster` helper exported
+- `server/src/routes/lens.ts` — NEW; `POST /api/lens`; single persona call with recent-chat context (last 4 turns); returns `LensResponse`
+- `server/src/routes/personas.ts` — NEW; `GET /api/personas`; returns public-safe roster
+- `server/src/index.ts` — `consultRoute` removed; `lensRoute` + `personasRoute` added
+- `server/src/routes/facilitator.ts` — "try a context lens" move added to synthesis system prompt library
+- `server/src/lib/buddies.ts` — deleted (replaced by personas.ts)
+- `server/src/routes/consult.ts` — deleted
+- `client/src/components/prototype/BuddyPanel.tsx` — deleted
+- `client/src/components/prototype/LensPane.tsx` — NEW; vertical far-right pane; collapsible with chevron (default expanded); `PersonaButton` sub-component with loading/disabled states
+- `client/src/components/prototype/FacilitatorChat.tsx` — `LensBubble` component added; renders `kind:'lens'` messages italic + right-aligned + left/right accent border + persona header above
+- `client/src/components/prototype/ReadingPane.tsx` — `buddyResponses: []` removed from new highlight creation
+- `client/src/components/slides/PrototypeSlide.tsx` — all buddy state/handlers removed; `personas`, `invokingPersonaId`, `lensPaneExpanded` state added; `invokeLens` handler added (captures `highlightId` at call time — same mid-call safety pattern as plan-08); layout: `FacilitatorChat` now in `flex-1` wrapper (full height), `LensPane` is right-most pane
+- `client/src/lib/persistence.ts` — hydration now strips `buddyResponses` field from old saves
+- `BUILD_PLANS/plan-08-alt-lenses-in-chat.md` — archived to `BUILD_PLANS/archive/`
 
 ### Highlight-scoped chats (plan-08)
 - `shared/types.ts` — `Highlight.chatHistory: ChatMessage[]` added
@@ -131,6 +148,8 @@ What's built, what's working. Updated at the end of every build session.
 **Plan 06** ✓ — `plan-06-persistence.md` — done. Highlights survive reload and session switch; `commitReady` stripped on save; hydration guard prevents spurious POST on initial load; per-session clear with confirm flow; delete-one buddy response (Minus icon).
 
 **Plan 08** ✓ — `plan-08-highlight-scoped-chats.md` — done. Chat moved from session-scoped top-level state to per-highlight `chatHistory` field. Every write targets the captured `highlightId`, not `activeHighlightId` — mid-call highlight switch handled. Chat persists via existing save effect. `FacilitatorChat` shows empty state with input hidden when no highlight active. Committed highlights keep chat open.
+
+**Plan 09** ✓ — `plan-09-lenses-in-chat.md` — done. Buddy panel replaced with Lens pane. Three personas (English Teacher, Historian, Reframer) are now on-demand buttons in a vertical far-right pane. Lens responses land in the highlight's chat thread as `kind:'lens'` messages — italic, right-aligned, left/right accent border, persona header above. Chat pane is now full-height (`flex-1`). Old buddy saves with `buddyResponses` hydrate cleanly (field stripped on load). `plan-08-alt-lenses-in-chat.md` archived.
 
 After plan-06 the main build track is complete. Post-MVP work lives in feature plans (see BUILD_PLANS/feature-*.md):
 - `feature-01-resize-aware-delete-button.md` — × button tracks highlight on viewport resize

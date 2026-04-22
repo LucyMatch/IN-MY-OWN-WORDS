@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Bubble, ChatMessage, CommitCheckRequest, CommitCheckResponse, ConsultRequest, ConsultResponse, FacilitatorRequest, FacilitatorResponse, Highlight, Session, VerifyRequest, VerifyResponse } from '@shared/types'
+import type {
+  Bubble,
+  ChatMessage,
+  CommitCheckRequest,
+  CommitCheckResponse,
+  FacilitatorRequest,
+  FacilitatorResponse,
+  Highlight,
+  LensRequest,
+  LensResponse,
+  Persona,
+  PersonasResponse,
+  Session,
+} from '@shared/types'
 import { loadHighlights, saveHighlights } from '@/lib/persistence'
 import { SessionsPanel } from '@/components/prototype/SessionsPanel'
 import { ReadingPane } from '@/components/prototype/ReadingPane'
 import { InYourOwnWordsPane } from '@/components/prototype/InYourOwnWordsPane'
 import { FacilitatorChat } from '@/components/prototype/FacilitatorChat'
-import { BuddyPanel } from '@/components/prototype/BuddyPanel'
+import { LensPane } from '@/components/prototype/LensPane'
 
 export function PrototypeSlide() {
   const [sessions, setSessions] = useState<Session[]>([])
@@ -17,7 +30,9 @@ export function PrototypeSlide() {
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null)
   const [facilitatorLoading, setFacilitatorLoading] = useState(false)
-  const [consultingHighlights, setConsultingHighlights] = useState<Set<string>>(new Set())
+  const [personas, setPersonas] = useState<Persona[]>([])
+  const [invokingPersonaId, setInvokingPersonaId] = useState<string | null>(null)
+  const [lensPaneExpanded, setLensPaneExpanded] = useState(true)
 
   // hasHydratedRef: false until initial load completes.
   // skipNextSaveRef: set true just before setHighlights(loaded) so the save-effect
@@ -78,6 +93,13 @@ export function PrototypeSlide() {
     // Only session-local UI state gets reset.
     setActiveHighlightId(null)
   }, [activeSessionId])
+
+  useEffect(() => {
+    fetch('/api/personas')
+      .then((r) => r.json())
+      .then((data: PersonasResponse) => setPersonas(data.personas))
+      .catch((err) => console.error('[personas] load error', err))
+  }, [])
 
   function addHighlight(h: Highlight) {
     const withChat: Highlight = { ...h, chatHistory: h.chatHistory ?? [] }
@@ -287,10 +309,81 @@ export function PrototypeSlide() {
     }
   }
 
+  async function invokeLens(personaId: string) {
+    if (!activeHighlightId) return
+    const activeHighlight = highlights.find((h) => h.id === activeHighlightId)
+    if (!activeHighlight) return
+
+    const highlightId = activeHighlight.id  // capture for safe mid-call highlight switch
+    const persona = personas.find((p) => p.id === personaId)
+    if (!persona) return
+
+    setInvokingPersonaId(personaId)
+
+    try {
+      const body: LensRequest = {
+        personaId,
+        highlight: activeHighlight.text,
+        descriptions: activeHighlight.bubbles.map((b) => b.text),
+        session: activeSession
+          ? { title: activeSession.title, author: activeSession.author, section: activeSession.section }
+          : undefined,
+        chatHistory: activeHighlight.chatHistory,
+      }
+
+      const res = await fetch('/api/lens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const errMsg =
+          res.status === 501
+            ? 'Lens unavailable — API key not configured.'
+            : 'Lens call failed. Please try again.'
+        setHighlights((prev) =>
+          prev.map((h) =>
+            h.id === highlightId
+              ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: errMsg, kind: 'chat' }] }
+              : h,
+          ),
+        )
+        return
+      }
+
+      const data = (await res.json()) as LensResponse
+      const lensMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.text,
+        kind: 'lens',
+        personaId: data.personaId,
+        personaName: data.personaName,
+      }
+
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId
+            ? { ...h, chatHistory: [...h.chatHistory, lensMessage] }
+            : h,
+        ),
+      )
+    } catch {
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId
+            ? { ...h, chatHistory: [...h.chatHistory, { role: 'assistant', content: 'Something went wrong.', kind: 'chat' }] }
+            : h,
+        ),
+      )
+    } finally {
+      setInvokingPersonaId(null)
+    }
+  }
+
   function addBubble(highlightId: string, text: string) {
     const newBubbleId = crypto.randomUUID()
     let updatedBubbles: Bubble[] = []
-    let shouldConsult = false
     let highlightText = ''
 
     setHighlights((prev) =>
@@ -307,197 +400,11 @@ export function PrototypeSlide() {
           },
         ]
         highlightText = h.text
-        shouldConsult = h.bubbles.length === 0 && h.buddyResponses.length === 0
         return { ...h, bubbles: updatedBubbles, commitReady: false }
       }),
     )
 
     void sendSynthesisTurn(highlightId, newBubbleId, highlightText, updatedBubbles)
-
-    if (shouldConsult) {
-      void sendConsult(highlightId, highlightText, updatedBubbles.map((b) => b.text))
-    }
-  }
-
-  async function sendConsult(highlightId: string, highlightText: string, bubbleTexts: string[]) {
-    setConsultingHighlights((prev) => new Set(prev).add(highlightId))
-
-    try {
-      const response = await fetch('/api/consult', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ highlight: highlightText, bubbles: bubbleTexts } satisfies ConsultRequest),
-      })
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => 'Consult failed')
-        setHighlights((prev) =>
-          prev.map((h) =>
-            h.id === highlightId
-              ? {
-                  ...h,
-                  buddyResponses: [
-                    ...h.buddyResponses,
-                    { id: crypto.randomUUID(), buddyId: 'unknown', error: errText, createdAt: new Date().toISOString() },
-                  ],
-                }
-              : h,
-          ),
-        )
-        return
-      }
-
-      const data = (await response.json()) as ConsultResponse
-
-      for (let i = 0; i < data.responses.length; i++) {
-        const resp = data.responses[i]
-        await new Promise((r) => setTimeout(r, i === 0 ? 0 : 250))
-        setHighlights((prev) =>
-          prev.map((h) =>
-            h.id === highlightId
-              ? {
-                  ...h,
-                  buddyResponses: [
-                    ...h.buddyResponses,
-                    {
-                      id: crypto.randomUUID(),
-                      buddyId: resp.buddyId,
-                      buddyName: resp.buddyName,
-                      text: resp.text,
-                      error: resp.error,
-                      createdAt: new Date().toISOString(),
-                    },
-                  ],
-                }
-              : h,
-          ),
-        )
-      }
-    } finally {
-      setConsultingHighlights((prev) => {
-        const next = new Set(prev)
-        next.delete(highlightId)
-        return next
-      })
-    }
-  }
-
-  async function reRunBuddy(highlightId: string, buddyId: string) {
-    const h = highlights.find((x) => x.id === highlightId)
-    if (!h) return
-
-    const bubbleTexts = h.bubbles.map((b) => b.text)
-
-    try {
-      const response = await fetch('/api/consult', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ highlight: h.text, bubbles: bubbleTexts } satisfies ConsultRequest),
-      })
-      if (!response.ok) return
-      const data = (await response.json()) as ConsultResponse
-      const matching = data.responses.find((r) => r.buddyId === buddyId)
-      if (!matching) return
-
-      setHighlights((prev) =>
-        prev.map((x) =>
-          x.id === highlightId
-            ? {
-                ...x,
-                buddyResponses: [
-                  ...x.buddyResponses,
-                  {
-                    id: crypto.randomUUID(),
-                    buddyId: matching.buddyId,
-                    buddyName: matching.buddyName,
-                    text: matching.text,
-                    error: matching.error,
-                    createdAt: new Date().toISOString(),
-                  },
-                ],
-              }
-            : x,
-        ),
-      )
-    } catch {
-      // Silent fail for re-run; user can click again
-    }
-  }
-
-  async function verifyBuddyResponse(highlightId: string, responseId: string) {
-    const h = highlights.find((x) => x.id === highlightId)
-    if (!h) return
-    const resp = h.buddyResponses.find((r) => r.id === responseId)
-    if (!resp || !resp.text) return
-
-    setHighlights((prev) =>
-      prev.map((x) =>
-        x.id === highlightId
-          ? {
-              ...x,
-              buddyResponses: x.buddyResponses.map((r) =>
-                r.id === responseId ? { ...r, verifying: true } : r,
-              ),
-            }
-          : x,
-      ),
-    )
-
-    try {
-      const response = await fetch('/api/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          highlight: h.text,
-          originalResponse: resp.text,
-          buddyId: resp.buddyId,
-        } satisfies VerifyRequest),
-      })
-
-      if (!response.ok) {
-        setHighlights((prev) =>
-          prev.map((x) =>
-            x.id === highlightId
-              ? {
-                  ...x,
-                  buddyResponses: x.buddyResponses.map((r) =>
-                    r.id === responseId ? { ...r, verifying: false } : r,
-                  ),
-                }
-              : x,
-          ),
-        )
-        return
-      }
-
-      const data = (await response.json()) as VerifyResponse
-
-      setHighlights((prev) =>
-        prev.map((x) =>
-          x.id === highlightId
-            ? {
-                ...x,
-                buddyResponses: x.buddyResponses.map((r) =>
-                  r.id === responseId ? { ...r, verification: data.text, verifying: false } : r,
-                ),
-              }
-            : x,
-        ),
-      )
-    } catch {
-      setHighlights((prev) =>
-        prev.map((x) =>
-          x.id === highlightId
-            ? {
-                ...x,
-                buddyResponses: x.buddyResponses.map((r) =>
-                  r.id === responseId ? { ...r, verifying: false } : r,
-                ),
-              }
-            : x,
-        ),
-      )
-    }
   }
 
   function updateBubble(highlightId: string, bubbleId: string, text: string) {
@@ -538,16 +445,6 @@ export function PrototypeSlide() {
               bubbles: h.bubbles.map((b) => ({ ...b, committed: true, staged: false })),
               commitReady: false,
             }
-          : h,
-      ),
-    )
-  }
-
-  function deleteBuddyResponse(highlightId: string, responseId: string) {
-    setHighlights((prev) =>
-      prev.map((h) =>
-        h.id === highlightId
-          ? { ...h, buddyResponses: h.buddyResponses.filter((r) => r.id !== responseId) }
           : h,
       ),
     )
@@ -609,21 +506,22 @@ export function PrototypeSlide() {
         facilitatorLoading={facilitatorLoading}
         onCommit={commitHighlight}
       />
-      <div className="border-border-soft flex w-[360px] flex-shrink-0 flex-col border-l">
+      <div className="flex min-w-0 flex-1 flex-col">
         <FacilitatorChat
           messages={activeChatHistory}
           loading={facilitatorLoading}
           onSend={sendChatMessage}
           hasActiveHighlight={activeHighlightId !== null}
         />
-        <BuddyPanel
-          activeHighlight={activeHighlight}
-          isConsulting={activeHighlightId !== null && consultingHighlights.has(activeHighlightId)}
-          onVerify={verifyBuddyResponse}
-          onReRun={reRunBuddy}
-          onDeleteResponse={deleteBuddyResponse}
-        />
       </div>
+      <LensPane
+        personas={personas}
+        hasActiveHighlight={activeHighlightId !== null}
+        onInvokeLens={invokeLens}
+        invokingPersonaId={invokingPersonaId}
+        expanded={lensPaneExpanded}
+        onToggleExpanded={() => setLensPaneExpanded((v) => !v)}
+      />
     </div>
   )
 }

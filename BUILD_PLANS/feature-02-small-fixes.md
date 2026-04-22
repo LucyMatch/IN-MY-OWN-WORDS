@@ -1,7 +1,7 @@
 # Feature Plan 02 — Small Fixes
 
 **Type:** Polish / post-MVP cleanup.
-**Prerequisite:** Main build plans done (00–06).
+**Prerequisite:** Main build track done (plans 00–09).
 
 Read `BUILD_PLANS/context.md` and `BUILD_PLANS/design-patterns.md` first.
 

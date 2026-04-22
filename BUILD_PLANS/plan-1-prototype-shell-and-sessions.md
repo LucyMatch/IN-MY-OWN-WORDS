@@ -1,8 +1,5 @@
-# SUPERSEDED
+# MOVED
 
-This plan has been split into:
+This file was archived to `BUILD_PLANS/archive/plan-1-prototype-shell-and-sessions.md` on 2026-04-22.
 
-- `plan-00-prep.md` — housekeeping (renames, lock-file regen)
-- `plan-01-prototype-shell-and-sessions.md` — the build
-
-Safe to delete this file.
+Superseded by `plan-00-prep.md` + `plan-01-prototype-shell-and-sessions.md`. Safe to delete this stub.

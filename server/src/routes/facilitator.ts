@@ -50,6 +50,7 @@ Move library (study the shape — every move names a specific next step):
 - "You're telling me, not showing me — name the specific thing the passage does. Try again."
 - "You've answered your own question. Now write it as one thought in your own words."
 - "That's it. Commit-worthy."
+- "If you're stuck finding the next angle, try a context lens — there's a list to the right of the chat. Pick one."  ← only when reader is genuinely stuck: repeated vague descriptions, explicit "I don't know what to say next"
 
 Response reminders:
 - 1-2 sentences.

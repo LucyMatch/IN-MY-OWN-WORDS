@@ -16,29 +16,14 @@
  */
 
 /* ============================================================
-   Buddies
+   Personas
    ============================================================ */
 
-/** Buddy roster entry — what the client renders to identify each buddy. */
-export type BuddyMeta = {
+export type Persona = {
   id: string
   name: string
-  description: string
-}
-
-/** A single buddy's response to a passage. Multiple responses from the same buddy have different ids. */
-export type BuddyResponse = {
-  /** Unique id for this individual response (not the buddy). */
-  id: string
-  buddyId: string
-  buddyName?: string
-  text?: string
-  error?: string
-  /** Verification text appended below the response when the user clicks Verify. */
-  verification?: string
-  /** Transient — true while a verify call is in flight. */
-  verifying?: boolean
-  createdAt: string
+  subtitle: string
+  buttonLabel: string
 }
 
 /* ============================================================
@@ -78,7 +63,6 @@ export type HighlightRange = {
 /**
  * A single paraphrase-in-your-own-words for a highlight. Users can stage
  * multiple bubbles per highlight, edit, and delete them before committing.
- * The committed flag is wired in plan-04; this plan leaves it false.
  */
 export type Bubble = {
   id: string
@@ -98,15 +82,14 @@ export type Highlight = {
   ranges: HighlightRange[]
   /**
    * The full selected text, concatenated across ranges with \n\n between
-   * paragraph boundaries. This is what we send to Facilitator/Buddies.
+   * paragraph boundaries. This is what we send to Facilitator/Personas.
    */
   text: string
   bubbles: Bubble[]
-  /** Buddy responses (parallel call results). May be empty if not consulted. */
-  buddyResponses: BuddyResponse[]
   /**
    * Chat thread for this highlight. Added in plan-08.
    * Persists with the highlight — each highlight owns its conversation.
+   * Lens responses land here as kind:'lens' messages.
    */
   chatHistory: ChatMessage[]
   /**
@@ -125,8 +108,12 @@ export type Highlight = {
 export type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
-  /** Distinguishes chat vs synthesis responses for rendering. Defaults to 'chat'. */
-  kind?: 'chat' | 'synthesis'
+  /** Distinguishes chat vs synthesis vs lens responses for rendering. Defaults to 'chat'. */
+  kind?: 'chat' | 'synthesis' | 'lens'
+  /** Only present on kind:'lens' messages — identifies the persona. */
+  personaId?: string
+  /** Display name for the persona; avoids server lookup on render. */
+  personaName?: string
 }
 
 /* ============================================================
@@ -139,18 +126,23 @@ export type HealthResponse = {
   hasApiKey: boolean
 }
 
-// POST /api/consult
-export type ConsultRequest = {
+// POST /api/lens
+export type LensRequest = {
+  personaId: string
   highlight: string
-  bubbles: string[]
+  descriptions: string[]
+  session?: { title: string; author: string; section: string }
+  chatHistory: ChatMessage[]
 }
-export type ConsultResponse = {
-  responses: BuddyResponse[]
+export type LensResponse = {
+  text: string
+  personaName: string
+  personaId: string
 }
 
-// GET /api/buddies
-export type BuddiesResponse = {
-  buddies: BuddyMeta[]
+// GET /api/personas
+export type PersonasResponse = {
+  personas: Persona[]
 }
 
 // POST /api/facilitator
