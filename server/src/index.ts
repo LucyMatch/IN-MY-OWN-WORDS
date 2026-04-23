@@ -58,7 +58,7 @@ app.use('/api', highlightsRoute)
 // In production, serve the built client from ../client/dist as a static SPA.
 // In dev, Vite serves the client on its own port (5173) and proxies /api here.
 if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.resolve(__dirname, '../../client/dist')
+  const clientDist = path.resolve(serverRoot, '../client/dist')
   app.use(express.static(clientDist))
   // SPA fallback: any non-/api GET returns index.html so client-side routing works.
   // Using a regex (not '*') to avoid path-to-regexp quirks across Express versions.
