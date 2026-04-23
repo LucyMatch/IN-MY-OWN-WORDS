@@ -214,27 +214,61 @@ export function PrototypeSlide() {
         ),
       )
 
-      // Second call: classifier
+      // Release-phrase gate on facilitator.
+      // The facilitator's prompt (see server/src/routes/facilitator.ts SYNTHESIS_SYSTEM_PROMPT)
+      // uses "commit-worthy" ONLY as a release cue. Other release-sounding phrases like
+      // "you've got it" appear in push language too ("you've got the parts, now connect...")
+      // so we match only on "commit-worthy" to avoid false positives.
+      //
+      // Negation guard: defensively reject phrases like "not commit-worthy" / "not quite
+      // commit-worthy yet" in case the facilitator ever phrases it that way. Cheap insurance.
+      const facilitatorText = facilitatorData.text.toLowerCase()
+      const hasCommitWorthy = facilitatorText.includes('commit-worthy')
+      const hasNegation = /\b(not|isn't|is not|not quite|not yet|before)\s+(quite\s+|yet\s+)?commit-worthy/i.test(
+        facilitatorData.text,
+      )
+      const facilitatorReleased = hasCommitWorthy && !hasNegation
+
+      setHighlights((prev) =>
+        prev.map((h) =>
+          h.id === highlightId ? { ...h, commitReady: facilitatorReleased } : h,
+        ),
+      )
+
+      // Classifier still runs — purely for telemetry. Does NOT gate the button.
+      // Log when it disagrees with the facilitator, so we can review post-demo.
       const commitBody: CommitCheckRequest = {
         highlight: highlightText,
         bubbles: currentBubbles.map((b) => b.text),
         facilitatorResponse: facilitatorData.text,
       }
 
-      const commitRes = await fetch('/api/commit-check', {
+      fetch('/api/commit-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(commitBody),
       })
-
-      if (commitRes.ok) {
-        const commitData = (await commitRes.json()) as CommitCheckResponse
-        setHighlights((prev) =>
-          prev.map((h) =>
-            h.id === highlightId ? { ...h, commitReady: commitData.commitReady } : h,
-          ),
-        )
-      }
+        .then(async (commitRes) => {
+          if (!commitRes.ok) return
+          const commitData = (await commitRes.json()) as CommitCheckResponse
+          if (commitData.commitReady !== facilitatorReleased) {
+            console.log('[gate] facilitator/classifier disagreement', {
+              facilitatorReleased,
+              classifierCommitReady: commitData.commitReady,
+              classifierReason: commitData.reason,
+              facilitatorText: facilitatorData.text,
+              bubbles: currentBubbles.map((b) => b.text),
+            })
+          } else {
+            console.log('[gate] facilitator/classifier agree', {
+              commitReady: facilitatorReleased,
+              classifierReason: commitData.reason,
+            })
+          }
+        })
+        .catch((err) => {
+          console.log('[gate] classifier telemetry error (non-blocking)', err)
+        })
     } catch {
       setHighlights((prev) =>
         prev.map((h) =>

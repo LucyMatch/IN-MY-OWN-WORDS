@@ -10,10 +10,11 @@ Updated as plans complete.
 
 ## Performance & feel
 
-### Two-call facilitator latency (plan-04)
+### Two-call facilitator latency *(resolved in plan-12)*
+
 **What to test:** Stage a bubble. Measure perceived wait from click + → commit button unlocks (or "push again" response lands).
-**Why:** Sequential facilitator → classifier call is ~3s total. Typing indicator is meant to bridge it.
-**If it feels wrong:** Switch classifier to fire-and-forget. Facilitator response appears as soon as it's ready; `commitReady` updates later when classifier returns. ~10-min refactor in `PrototypeSlide.sendSynthesisTurn`.
+**Why:** Sequential facilitator → classifier call was ~3s total. Plan-12 made the classifier fire-and-forget — facilitator response + commit gate resolution land together; classifier telemetry runs in the background without blocking the UI. Typing indicator bridges the facilitator call only.
+**If latency still feels long:** The facilitator call itself is the only bottleneck now. No further optimisation without streaming.
 
 ### Yellow → green commit transition (plan-04)
 **What to test:** Click commit. Watch the bubbles + highlight marks in the reading pane transition colour.
@@ -24,12 +25,25 @@ Updated as plans complete.
 - Colour wrong → tune `--color-commit` in `globals.css`. Fallback is to swap for the accent orange.
 
 ### Commit-readiness classifier calibration (plan-04)
+
 **What to test:** Write several bubble drafts of varying quality for the same highlight. Does the classifier correctly gate the bad ones and release the good ones?
 **Why:** The whole commit gating mechanic hinges on the classifier's judgment being fair.
 **If it feels wrong:**
 - Too strict (never unlocks) → soften the system prompt in `server/src/routes/commitCheck.ts`.
 - Too loose (unlocks too easily) → tighten the "default to false" instruction, add more failure examples.
 - Note: "Commit anyway" link is always visible when locked, so users are never stuck — prioritise fixing false negatives over false positives.
+
+### Commit gate phrase-matching behaviour (plan-12) — observe during demo rehearsals
+
+**What to test:**
+
+1. Stage a genuinely good paraphrase. Facilitator should respond with "commit-worthy" somewhere in its message. Commit button unlocks. Console logs `[gate] facilitator/classifier agree` OR `[gate] facilitator/classifier disagreement` with all payload fields (facilitatorReleased, classifierCommitReady, classifierReason, facilitatorText, bubbles).
+2. Stage a weak or echoing paraphrase. Facilitator pushes back without using "commit-worthy". Commit button stays locked. "Commit anyway" link remains functional.
+3. If the facilitator ever says "not commit-worthy" or "not quite commit-worthy yet" — verify commit button does NOT unlock (negation guard active).
+4. Watch for the facilitator using a release-y phrase WITHOUT "commit-worthy" (e.g. "you've captured it", "that's exactly it"). If this happens, flag as a drift item — the facilitator prompt should already steer toward "commit-worthy" as the release cue, so any exception is a sign of prompt drift that warrants post-demo attention.
+
+**Why:** Plan-12 moved gate responsibility to the facilitator's own phrasing. The classifier now runs fire-and-forget for telemetry only. If the facilitator drifts away from "commit-worthy" as its release phrase, the commit button will silently never unlock — that's the failure mode to watch for.
+**If the facilitator never says "commit-worthy":** Check `SYNTHESIS_SYSTEM_PROMPT` in `server/src/routes/facilitator.ts` — it should name "commit-worthy" explicitly as the release cue. Do not add new phrases to the phrase-matcher without updating the facilitator prompt to match.
 
 ### Pane open/close animation (plan-03)
 **What to test:** Collapse and expand the In Your Own Words pane. Check the 300ms transition feels right.

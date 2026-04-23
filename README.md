@@ -129,6 +129,23 @@ Everything below is deliberate, documented in the deck:
 
 ---
 
+## Design Notes
+
+### Commit Gate (Prototype Note)
+
+The Commit button unlocks when the facilitator explicitly uses the phrase
+"commit-worthy" in its response. A second classifier model runs in the background
+and logs its verdict to the browser console, but does not gate the UI. This was a
+deliberate prototype simplification: a two-model gate caused occasional silent
+mismatches where the coach said "you've got it" but the button stayed locked. For
+the demo, single-gate via the facilitator is cleaner; the classifier telemetry
+preserves the second-opinion signal for review.
+
+Future work: surface the classifier's reasoning in chat when it disagrees, so the
+reader can see "you're close, but work on X" rather than a silent mismatch.
+
+---
+
 ## Credits
 
 Design tokens, `cn()` utility, primitive component patterns, and visual assets adapted from the Anthropic Education Labs takehome starter.

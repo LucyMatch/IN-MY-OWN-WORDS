@@ -6,7 +6,7 @@ What's built, what's working. Updated at the end of every build session.
 
 ---
 
-**Last updated:** 2026-04-22 (plan-11 complete)
+**Last updated:** 2026-04-22 (plan-12 complete)
 
 ---
 
@@ -167,6 +167,8 @@ What's built, what's working. Updated at the end of every build session.
 **Plan 10** ✓ — `plan-10-layout-and-polish.md` — done. Reading pane locked to 40% (`basis-[40%] flex-shrink-0`, adjusted from initial 50% post-testing). Lens auto-expands on highlight activation. IYOW empty input moved to bottom, `bg-page`, chevrons flipped. Sessions pane auto-collapses on highlight creation, bubble staging, scroll. Reading pane title sticky. Hamburger toggles. Lens responses drop italic. Lens token cap 180, prompt tightened to 2-3 sentences TOTAL. Typechecks clean.
 
 **Plan 11** ✓ — `plan-11-deck-strip-down.md` — done. Deck stripped to four slides: Title, Concept, Viewing Guide, Prototype. `SlideSection` narrowed to `'context' | 'prototype'`. Three orphan slide files deleted (`UserJourneySlide`, `ConsiderationsSlide`, `NextStepsSlide`) — no orphan imports in other files (they were only referenced in `slides.config.tsx`). TitleSlide and ConceptSlide copy rewritten. `ViewingGuideSlide` created with expand/collapse (default closed). Toolbar restructured: brand + section label (fixed-width `min-w-[96px]`) + arrows + counter on left; filled orange `variant="primary"` Jump to Prototype CTA centred absolutely; hamburger only on right. ReadingPane resize fix rolled up from `feature-01`: `recomputeMarkerPositions` extracted as `useCallback`; existing `useLayoutEffect` uses it; new `useEffect` sets up `ResizeObserver` on `paragraphsRootRef.current`, cleans up on unmount. Typechecks clean (both workspaces).
+
+**Plan 12** ✓ — `plan-12-commit-gate-simplification.md` — done. Commit gate simplified: `sendSynthesisTurn` in `PrototypeSlide.tsx` now gates `commitReady` on phrase-matching the facilitator's response for "commit-worthy" (case-insensitive, with a negation guard for "not commit-worthy" / "not quite commit-worthy yet" etc.). Classifier fetch still fires fire-and-forget for telemetry only — logs agreement/disagreement with payload (facilitatorReleased, classifierCommitReady, classifierReason, facilitatorText, bubbles) to console; classifier errors caught and logged as non-blocking. README updated with commit gate design note. Typechecks clean.
 
 **feature-01** — `feature-01-resize-aware-delete-button.md` — RESOLVED as part of plan-11. ResizeObserver wired in ReadingPane.tsx. File left in BUILD_PLANS/ per plan spec.
 
