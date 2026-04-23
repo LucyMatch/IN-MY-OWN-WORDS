@@ -17,6 +17,7 @@ server/dist/
 .DS_Store
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 
@@ -26,8 +27,6 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
-# runtime data
-server/data/highlights.json
 
 # coverage / test artifacts
 coverage/
